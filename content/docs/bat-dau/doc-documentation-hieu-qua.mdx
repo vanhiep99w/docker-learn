@@ -1,4 +1,356 @@
 ---
 title: "Cách đọc Docker documentation"
-description: "Khung tài liệu về Cách đọc Docker documentation, được chuẩn bị để bổ sung nội dung Docker chi tiết và ví dụ thực hành sau."
+description: "Quy trình tìm đúng Docker guide, manual, reference và local help; kiểm tra version, platform, context và xác minh ví dụ trước khi áp dụng."
 ---
+
+Docker documentation gồm tutorial, guide, product manual, CLI/API reference, specifications và release notes. Mỗi loại trả lời một câu hỏi khác nhau. Lỗi phổ biến không phải “không tìm thấy tài liệu”, mà là dùng một tutorial để suy ra default production hoặc dùng reference table mà chưa hiểu workflow.
+
+Trang này cung cấp quy trình đọc documentation để biến một câu hỏi mơ hồ như “Docker không chạy” thành truy vấn có component, version, platform, evidence và phạm vi rõ ràng.
+
+## Bắt đầu bằng loại câu hỏi
+
+Trước khi search, hãy phân loại điều bạn cần:
+
+| Câu hỏi | Loại tài liệu nên mở đầu tiên |
+|---|---|
+| “Docker giải quyết vấn đề gì?” | Concept/Get started |
+| “Làm sao chạy web container đầu tiên?” | Tutorial/Guide |
+| “`--mount` nhận key nào?” | CLI reference |
+| “Compose field này có type/default gì?” | Compose file reference/specification |
+| “Engine release này thay đổi behavior nào?” | Release notes/deprecations |
+| “Cài Engine trên Ubuntu/Fedora thế nào?” | Install manual đúng distribution |
+| “API endpoint này yêu cầu version nào?” | Engine API reference/version history |
+| “Build cache miss vì sao?” | Build manual trước, CLI reference sau |
+
+Tutorial tối ưu cho flow học tập, thường cố ý bỏ nhiều option. Reference tối ưu cho tra cứu chính xác, thường không giải thích đầy đủ mental model. Bạn thường cần cả hai, nhưng phải dùng đúng thứ tự.
+
+## Bản đồ Docker Docs
+
+Tại [docs.docker.com](https://docs.docker.com/), nội dung chính được tổ chức theo các nhóm:
+
+### Get started
+
+Dành cho người mới, ưu tiên kết quả nhanh và khái niệm nền. Dùng để hình dung workflow, nhưng đừng suy ra rằng ví dụ tối thiểu là production recommendation.
+
+### Guides
+
+Hướng dẫn theo use case, framework hoặc task. Guide thường ghép nhiều product/component. Hãy kiểm tra prerequisites và đường dẫn học thay vì copy riêng block command giữa trang.
+
+### Manuals
+
+Tài liệu theo product/capability như Docker Engine, Build, Compose, Desktop, Hub và Scout. Manual thích hợp khi bạn đã biết layer gây vấn đề và muốn hiểu mechanism/configuration.
+
+### Reference
+
+Định nghĩa cú pháp, option, API, Dockerfile, Compose file và daemon configuration. Reference là nguồn chính để xác minh tên field, option, default, API requirement và alias.
+
+### Release notes và deprecations
+
+Ghi thay đổi theo version. Dùng khi behavior khác giữa máy, command cũ xuất hiện trong blog hoặc feature không tồn tại ở environment hiện tại.
+
+## Thu thập “bộ nhận dạng môi trường” trước khi đọc
+
+Một câu trả lời đúng cho Docker Desktop trên macOS chưa chắc đúng cho Docker Engine native trên Linux. Trước khi áp dụng hướng dẫn, thu thập ít nhất:
+
+```bash
+docker version
+docker info
+docker context show
+docker compose version
+docker buildx version
+```
+
+Không cần chia sẻ toàn bộ `docker info` công khai vì output có thể lộ registry, proxy, labels, paths hoặc environment details. Khi tạo issue, lọc secret và dữ liệu nội bộ.
+
+Ghi lại:
+
+- operating system và CPU architecture của client/daemon;
+- Docker Desktop hay Docker Engine;
+- Client version, Server/Engine version và API version;
+- Docker context/daemon endpoint;
+- Compose/Buildx version nếu liên quan;
+- rootful hay rootless, Linux hay Windows containers;
+- command đầy đủ, exit code và error nguyên văn;
+- expected behavior và actual behavior.
+
+> [!IMPORTANT]
+> “Docker version mới nhất” không phải thông tin có thể tái tạo. Ghi version cụ thể từ output và ngày kiểm tra. Docker Desktop, Engine, CLI plugin và daemon remote có thể mang version khác nhau.
+
+## Cách đọc một trang CLI reference
+
+Xét trang [`docker container run`](https://docs.docker.com/reference/cli/docker/container/run/). Đọc theo thứ tự sau.
+
+### 1. Description và Usage
+
+Usage có dạng:
+
+```text
+docker container run [OPTIONS] IMAGE [COMMAND] [ARG...]
+```
+
+Các ký hiệu là grammar, không phải ký tự luôn gõ nguyên:
+
+- `[OPTIONS]`: zero hoặc nhiều option tùy chọn;
+- `IMAGE`: positional argument bắt buộc;
+- `[COMMAND]`: command tùy chọn override/default theo semantics của image;
+- `[ARG...]`: zero hoặc nhiều argument còn lại;
+- `|`: thường biểu thị lựa chọn trong mô tả, không phải shell pipe trừ khi example thật sự dùng pipe.
+
+Không gõ dấu `[` và `]` trừ khi chúng là một phần literal được tài liệu nói rõ.
+
+### 2. Alias
+
+`docker run` là alias phổ biến của `docker container run`. Khi search error, thử cả object-oriented command và alias vì log/blog có thể dùng một trong hai.
+
+### 3. Options table
+
+Đọc đủ bốn lớp nếu có:
+
+- short và long flag, ví dụ `-d`, `--detach`;
+- default;
+- API/version requirement;
+- description và link tới section example.
+
+Một option tồn tại trong docs hiện tại không đảm bảo daemon cũ hỗ trợ. Client có thể parse flag nhưng daemon/API target quyết định một phần behavior.
+
+### 4. Example theo option
+
+Reference thường chứa behavior và edge case quan trọng bên dưới bảng. Với `--publish`, cần đọc host address, IPv4/IPv6 và security warning, không chỉ nhớ `-p HOST:CONTAINER`.
+
+### 5. Related command
+
+`run`, `create`, `start`, `exec` và `attach` không thay thế lẫn nhau:
+
+- `run`: create + start container mới;
+- `create`: tạo nhưng chưa start;
+- `start`: start container đã tồn tại;
+- `exec`: chạy process bổ sung trong container đang chạy;
+- `attach`: gắn standard streams vào process chính theo behavior.
+
+Đọc reference theo object lifecycle giúp chọn đúng command thay vì thử alias ngẫu nhiên.
+
+## Dùng local help như nguồn theo version đang cài
+
+Documentation website thường phản ánh phiên bản hiện hành. Local CLI cho biết syntax client đang có:
+
+```bash
+docker --help
+docker container --help
+docker container run --help
+docker compose --help
+docker buildx --help
+```
+
+Local help hữu ích khi máy offline hoặc docs mới hơn client. Tuy vậy, help không thay thế manual: nó thường mô tả option ngắn và không giải thích security/trade-off đầy đủ.
+
+So sánh theo quy trình:
+
+1. Tìm option trong local `--help`.
+2. Đọc reference online của đúng product/version nếu có.
+3. Kiểm tra daemon/API compatibility.
+4. Thử trong disposable environment.
+5. Xác minh state bằng inspect/list/logs thay vì chỉ dựa exit code của command cấu hình.
+
+## Nhận biết placeholder và giá trị literal
+
+Documentation dùng nhiều style placeholder:
+
+```text
+<container>
+YOUR_REGISTRY
+example.com/org/app:tag
+/path/on/host
+```
+
+Trước khi copy, tạo bảng thay thế riêng:
+
+| Placeholder | Giá trị thực | Cách xác minh |
+|---|---|---|
+| `<container>` | `welcome-docker` | `docker container ls --all` |
+| `YOUR_REGISTRY` | Registry của tổ chức | Registry/project settings |
+| `/path/on/host` | Absolute path đã kiểm tra | `pwd`, `ls`, permission/ownership |
+| `HOST_PORT` | Port không xung đột | Container list và host network tool |
+
+Tên `example`, `demo`, `localhost` hoặc tag `latest` trong tutorial có thể chỉ phục vụ minh họa. Không đưa nguyên vào production pipeline nếu naming, access hoặc reproducibility yêu cầu giá trị khác.
+
+## Đọc code block cùng ngữ cảnh shell
+
+Một command đúng trong Bash có thể sai trong PowerShell hoặc CMD vì quoting, line continuation, environment-variable syntax và path khác nhau.
+
+Ví dụ line continuation:
+
+```bash
+docker run \
+  --name demo \
+  nginx:alpine
+```
+
+Dấu `\` ở cuối dòng là cú pháp shell kiểu Bash. Trong PowerShell, cách an toàn cho ví dụ ngắn là viết một dòng hoặc dùng continuation syntax của PowerShell. Tương tự:
+
+- `$(pwd)` là command substitution trong POSIX-like shell;
+- `${PWD}` và `$PWD` có semantics/quoting khác theo shell;
+- Windows path chứa `:` và `\` cần được đọc theo shell và mount parser;
+- single quote không hoạt động giống nhau giữa mọi shell.
+
+Khi docs có tabs theo platform, chọn đúng tab rồi giữ nguyên shell cho toàn bộ sequence.
+
+## Phân biệt client, daemon và container environment
+
+Ba nơi có thể chạy code khác nhau:
+
+1. **Shell client:** nơi bạn gõ `docker`.
+2. **Docker daemon host/environment:** nơi Engine quản lý container và port/mount.
+3. **Container:** namespace/filesystem nơi application process chạy.
+
+Với local Linux Engine, (1) và (2) có thể cùng máy. Với Docker Desktop hoặc remote context, chúng khác layer. Điều này ảnh hưởng:
+
+- `localhost`;
+- host bind-mount path;
+- published port;
+- CPU architecture;
+- proxy/DNS path;
+- file permission.
+
+Khi documentation nói “host”, hãy xác định đó là client host, Docker daemon host hay physical host bên ngoài Desktop VM.
+
+## Kiểm tra độ mới và phạm vi của tài liệu
+
+Trước khi áp dụng một bài viết, kiểm tra:
+
+- URL có thuộc official docs/project không;
+- product và command generation: `docker compose` hay legacy `docker-compose`;
+- ngày publish/update nếu có;
+- version trong output/example;
+- platform: Linux, Windows containers, macOS/Desktop, WSL 2;
+- feature stable, experimental hay deprecated;
+- hướng dẫn có giả định Swarm/Kubernetes/rootless không;
+- link reference có còn hoạt động và redirect tới nội dung gì.
+
+Blog post và Q&A vẫn hữu ích để tìm giả thuyết, nhưng claim về option/default/security phải đối chiếu official reference, release notes hoặc source/specification.
+
+## Quy trình áp dụng một example an toàn
+
+### 1. Xác định side effect
+
+Command tạo/xóa object gì? Có publish port, mount host directory, truyền secret, đổi daemon config, restart service hay dùng quyền cao không?
+
+### 2. Thu hẹp blast radius
+
+- dùng local/disposable environment;
+- đặt container/project name rõ;
+- bind port vào `127.0.0.1` nếu chỉ cần local;
+- mount read-only khi chỉ đọc;
+- không dùng `--privileged` hoặc Docker socket nếu chưa có lý do;
+- không chạy prune/remove force trên shared daemon.
+
+### 3. Chạy từng milestone
+
+Không paste cả chuỗi dài. Sau pull, kiểm tra image; sau run, kiểm tra state; sau publish, gửi request; sau config change, inspect resolved configuration.
+
+### 4. Ghi expected signal trước
+
+Ví dụ “`docker container ls` phải thấy name `demo` và mapping `127.0.0.1:8080->80/tcp`”. Expected signal cụ thể giúp phát hiện bước sai sớm.
+
+### 5. Chuẩn bị cleanup/rollback
+
+Biết object name, file đã sửa, backup path và command khôi phục trước khi thay đổi. `docker compose down`, `docker container rm` và `docker volume rm` có phạm vi khác nhau; đọc option thay vì dùng một cleanup command cho mọi trường hợp.
+
+## Cách đọc Compose documentation
+
+Compose có nhiều layer dễ nhầm:
+
+- YAML syntax;
+- Compose Specification/model;
+- interpolation từ environment;
+- merge/override/include;
+- CLI behavior;
+- container configuration Engine nhận sau khi resolve.
+
+Luôn render model trước khi giải thích behavior:
+
+```bash
+docker compose config
+```
+
+Command này giúp phát hiện interpolation, merge và normalized configuration. Hãy cẩn thận vì output có thể chứa resolved secret-like environment values; không đăng công khai không kiểm tra.
+
+Khi đọc một field Compose, xác minh:
+
+1. field nằm dưới top-level object nào (`services`, `volumes`, `networks`,...);
+2. type là string, list hay mapping;
+3. relative path được resolve từ đâu;
+4. field do Compose CLI xử lý hay chuyển thành Engine runtime config;
+5. behavior có phụ thuộc platform/Compose version không.
+
+## Cách đọc Dockerfile/Build documentation
+
+Build có ít nhất ba input cần phân biệt:
+
+- Dockerfile/build definition;
+- build context;
+- builder configuration/cache.
+
+Khi example nói cache hoặc `COPY` không hoạt động như mong đợi, kiểm tra cả `.dockerignore`, context path và builder đang chọn:
+
+```bash
+docker buildx ls
+docker buildx inspect
+```
+
+Không đưa secret bằng `ARG`/`ENV` chỉ vì example minh họa biến. Dùng BuildKit secret/SSH mount theo manual dành cho secret. Đồng thời phân biệt build-time environment với runtime environment.
+
+## Từ error message tới truy vấn tốt
+
+Truy vấn quá rộng:
+
+```text
+Docker không chạy
+```
+
+Truy vấn có khả năng dẫn tới đúng tài liệu:
+
+```text
+Docker Engine <version> on Ubuntu <version>, context default:
+docker run fails with "port is already allocated" for 127.0.0.1:8080
+```
+
+Hoặc:
+
+```text
+Docker Compose <version>: environment interpolation in compose.yaml
+uses empty value although .env exists; project directory is ...
+```
+
+Cấu trúc truy vấn tốt gồm:
+
+```text
+component + version + platform + operation + exact symptom
+```
+
+Thêm exact error trong dấu quote khi search; bỏ container ID, token và path nhạy cảm.
+
+## Checklist trước khi tin và chạy một command
+
+- [ ] Tài liệu dành cho đúng Docker product/component.
+- [ ] Platform, shell và container mode phù hợp.
+- [ ] Client, Server/API và plugin version đáp ứng yêu cầu.
+- [ ] Docker context/daemon target đã xác nhận.
+- [ ] Mọi placeholder đã thay bằng giá trị thực.
+- [ ] Hiểu image reference, tag/digest và nguồn registry.
+- [ ] Hiểu port, mount, secret và privilege side effect.
+- [ ] Có command xác minh sau thao tác.
+- [ ] Có cleanup hoặc rollback phù hợp.
+- [ ] Không đưa output chứa credential hoặc thông tin nội bộ lên issue công khai.
+
+## Nguồn nên bookmark
+
+- [Docker Docs](https://docs.docker.com/)
+- [Docker manuals](https://docs.docker.com/manuals/)
+- [Docker reference](https://docs.docker.com/reference/)
+- [Docker CLI reference](https://docs.docker.com/reference/cli/docker/)
+- [Dockerfile reference](https://docs.docker.com/reference/dockerfile/)
+- [Compose file reference](https://docs.docker.com/reference/compose-file/)
+- [Docker Engine release notes](https://docs.docker.com/engine/release-notes/)
+- [Docker Engine deprecated features](https://docs.docker.com/engine/deprecated/)
+
+Sau khi biết cách đối chiếu nguồn, dùng [Lộ trình theo vai trò](/docs/bat-dau/lo-trinh-theo-vai-tro/) để chọn những manual và phần trong curriculum cần đọc sâu cho công việc của bạn.

@@ -1,4 +1,336 @@
 ---
 title: "Lộ trình theo vai trò"
-description: "Khung tài liệu về Lộ trình theo vai trò, được chuẩn bị để bổ sung nội dung Docker chi tiết và ví dụ thực hành sau."
+description: "Lộ trình Docker theo developer, DevOps/SRE, platform engineer, security và CI/CD với năng lực đầu ra, bài thực hành và thứ tự chủ đề đề xuất."
 ---
+
+Không phải vai trò nào cũng cần học Docker theo cùng độ sâu. Developer cần build và debug application nhanh; SRE cần quan sát failure và phục hồi; security engineer cần hiểu trust boundary; platform engineer cần thiết kế build, registry và runtime guardrails.
+
+Tuy vậy, mọi vai trò đều cần một **common core**. Bỏ qua image/container lifecycle, network, storage hoặc quyền daemon sẽ tạo lỗ hổng ngay khi đi vào chủ đề chuyên sâu.
+
+## Cách dùng lộ trình
+
+1. Hoàn thành common core và tự giải thích được object/lifecycle.
+2. Chọn một vai trò chính theo task bạn thực sự chịu trách nhiệm.
+3. Học theo năng lực đầu ra, không theo số trang đã đọc.
+4. Làm một artifact hoặc lab có thể kiểm chứng ở mỗi chặng.
+5. Quay lại nhánh khác khi công việc giao nhau; production system luôn cần nhiều góc nhìn.
+
+Lộ trình không đặt thời gian cố định vì kinh nghiệm Linux, networking, CI và application architecture của mỗi người khác nhau. Chỉ chuyển chặng khi bạn đạt checkpoint, không phải khi đã “đọc hết tuần”.
+
+## Common core cho mọi vai trò
+
+### Chặng 1: Mental model
+
+Đọc:
+
+- [Docker là gì?](/docs/bat-dau/docker-la-gi/)
+- [Container và virtual machine](/docs/bat-dau/container-va-virtual-machine/)
+- [Hệ sinh thái Docker](/docs/bat-dau/he-sinh-thai-docker/)
+- [Thuật ngữ Docker quan trọng](/docs/bat-dau/thuat-ngu-quan-trong/)
+
+**Checkpoint:** giải thích được image, container, registry, client, daemon, volume và published port mà không dùng chúng như từ đồng nghĩa.
+
+### Chặng 2: Environment và CLI
+
+Thực hiện [Ứng dụng container đầu tiên](/docs/bat-dau/ung-dung-container-dau-tien/), sau đó học [Cài đặt và môi trường](/docs/cai-dat-va-moi-truong/) cùng [Docker CLI](/docs/docker-cli/).
+
+**Checkpoint:**
+
+- `docker version` đọc được Client và Server;
+- biết context nào đang được điều khiển;
+- dùng list/inspect/logs để xác minh state;
+- phân biệt run, create, start, stop và remove;
+- không dùng `sudo`, `--force`, `--privileged` hay prune như cách sửa lỗi mặc định.
+
+### Chặng 3: Image, data và network
+
+Học:
+
+- [Images và Dockerfile](/docs/images-va-dockerfile/)
+- [Container lifecycle](/docs/container-lifecycle/)
+- [Storage](/docs/storage/)
+- [Networking](/docs/networking/)
+
+**Checkpoint:** build được image có version/tag rõ, chạy non-interactive, publish port có chủ đích, giữ persistent data ngoài writable layer và chẩn đoán request path cơ bản.
+
+### Chặng 4: Multi-container và baseline security
+
+Học [Docker Compose](/docs/docker-compose/) và các khái niệm nền trong [Security](/docs/security/).
+
+**Checkpoint:** mô tả application nhiều service bằng Compose, dùng service name thay hard-coded container IP, phân biệt config/secret, đặt healthcheck/resource/security configuration phù hợp và dọn project mà không xóa nhầm dữ liệu.
+
+Sau common core, chọn nhánh bên dưới.
+
+## Lộ trình Application Developer
+
+### Mục tiêu
+
+Bạn có thể tạo development environment tái tạo được, build image hiệu quả, chạy stack local nhiều service và debug application mà không biến container thành một server được patch thủ công.
+
+### Thứ tự ưu tiên
+
+1. **Dockerfile và build context:** `FROM`, `RUN`, `COPY`, `.dockerignore`, `CMD`/`ENTRYPOINT`, `USER`.
+2. **Layers và cache:** sắp xếp dependency step để cache ổn định; không copy toàn bộ source quá sớm.
+3. **Multi-stage build:** tách build toolchain khỏi runtime image.
+4. **Compose services:** app, database, cache; environment, profiles và override cho dev/test.
+5. **Development mounts:** phân biệt bind mount source code với named volume cho dependency/database.
+6. **Networking:** service-to-service bằng DNS name; host-to-container bằng published port.
+7. **Debugging:** logs, inspect, exec khi image có tool phù hợp, debug minimal image bằng sidecar/tool container.
+8. **Security baseline:** non-root, không bake secret, pin dependency/base image có chủ đích.
+
+Các phần chính:
+
+- [Images và Dockerfile](/docs/images-va-dockerfile/)
+- [Docker Compose](/docs/docker-compose/)
+- [Development và CI/CD](/docs/development-va-cicd/)
+- [Observability và troubleshooting](/docs/observability-va-troubleshooting/)
+
+### Artifact tốt nghiệp
+
+Containerize một API thật với:
+
+- multi-stage Dockerfile;
+- `.dockerignore` không gửi source secret và output thừa;
+- runtime chạy non-root nếu application hỗ trợ;
+- Compose stack gồm API và data service;
+- named volume cho persistent data;
+- healthcheck và startup behavior có giải thích;
+- README có build, run, verify, debug và cleanup;
+- test chứng minh container mới có thể thay container cũ mà dữ liệu cần giữ vẫn tồn tại.
+
+### Lỗi học tập cần tránh
+
+- mount toàn bộ source đè mất file được build trong image mà không hiểu precedence;
+- dùng `latest` ở mọi nơi rồi không biết release nào đang chạy;
+- cài package bằng `docker exec` và coi container đã sửa là artifact;
+- dùng `localhost` để gọi service ở container khác;
+- đưa database password vào Dockerfile hoặc commit `.env`.
+
+## Lộ trình DevOps/SRE/Operations
+
+### Mục tiêu
+
+Bạn có thể vận hành Docker host và workload với khả năng quan sát, giới hạn tài nguyên, bảo vệ dữ liệu, upgrade/rollback và xử lý incident dựa trên evidence.
+
+### Thứ tự ưu tiên
+
+1. **Linux container foundations:** namespaces, cgroups, process/signal, filesystem driver.
+2. **Engine installation và daemon:** package source, rootless/rootful, service manager, `daemon.json`, proxy/mirror, upgrade.
+3. **Container lifecycle:** exit codes, restart policy, graceful stop, healthcheck và cleanup.
+4. **Storage operations:** volume inventory, permission, database consistency, backup và restore test.
+5. **Networking operations:** bridge, firewall/iptables/nftables interaction, DNS và port publishing.
+6. **Resource governance:** memory, CPU, PIDs, ulimit, I/O và OOM evidence.
+7. **Observability:** daemon logs, container logs, events, metrics, disk usage và support bundle.
+8. **Production process:** capacity, patching, rollback, disaster recovery và runbook.
+
+Các phần chính:
+
+- [Nền tảng container](/docs/nen-tang-container/)
+- [Cài đặt và môi trường](/docs/cai-dat-va-moi-truong/)
+- [Tài nguyên và hiệu năng](/docs/tai-nguyen-va-hieu-nang/)
+- [Observability và troubleshooting](/docs/observability-va-troubleshooting/)
+- [Production operations](/docs/production-operations/)
+
+### Artifact tốt nghiệp
+
+Xây một runbook cho Docker host và một workload stateful, gồm:
+
+- inventory Engine/OS/version/context;
+- dashboard hoặc tập metric/log tối thiểu;
+- alert có signal và ngưỡng giải thích được;
+- procedure thu thập evidence trước restart/remove;
+- backup và restore drill đã chạy;
+- upgrade pre-check, canary/maintenance plan và rollback;
+- kiểm thử disk pressure, OOM hoặc container crash trong môi trường lab;
+- cleanup policy không xóa volume/image đang được release dùng.
+
+### Lỗi học tập cần tránh
+
+- restart daemon/container trước khi thu logs, inspect state và events;
+- xem volume là backup;
+- chạy prune định kỳ nhưng không có inventory/retention;
+- không đặt resource guardrail rồi quy mọi OOM cho Docker;
+- expose Docker API/socket để tiện automation mà không có authentication/authorization boundary.
+
+## Lộ trình Platform Engineer
+
+### Mục tiêu
+
+Bạn cung cấp paved road để team build, phân phối và chạy container nhất quán, có policy và observability mà không buộc mọi developer hiểu toàn bộ internals.
+
+### Thứ tự ưu tiên
+
+1. Hoàn thành common core và nhánh operations ở mức host/runtime.
+2. Học sâu [BuildKit](/docs/buildkit/): builder/driver, cache backend, multi-platform, secret/SSH mount, provenance/SBOM và Bake.
+3. Thiết kế [Registry và distribution](/docs/registry-va-distribution/): naming, auth, retention, mirror, garbage collection và promotion bằng digest.
+4. Xây supply-chain policy trong [Security](/docs/security/): trusted base image, scanning, signing/verification và least privilege.
+5. Chuẩn hóa Compose/dev workflow và CI templates trong [Development và CI/CD](/docs/development-va-cicd/).
+6. Hiểu runtime internals và failure boundary tại [Docker internals](/docs/docker-internals/).
+7. Nếu platform đích là Kubernetes, học [Kubernetes và Docker](/docs/kubernetes-va-docker/).
+
+### Artifact tốt nghiệp
+
+Thiết kế một golden path có:
+
+- base image policy và update ownership;
+- reusable BuildKit pipeline với external cache;
+- secret không xuất hiện trong image history/build log;
+- multi-platform strategy chỉ cho platform được test;
+- SBOM/provenance/signing policy theo risk;
+- registry namespace, retention và access model;
+- template Compose/dev environment;
+- documented SLO, capacity và failure modes của builder/registry;
+- escape hatch có review thay vì cho phép `--privileged` mặc định.
+
+### Câu hỏi thiết kế phải trả lời
+
+- Build chạy ở đâu và ai có quyền đọc source/secret/cache?
+- Cache có thể bị poisoning hoặc chia sẻ sai tenant không?
+- Tag nào mutable, release nào pin digest?
+- Ai có quyền push, overwrite tag và delete artifact?
+- Base image được rebuild khi có patch bằng cơ chế nào?
+- Developer nhận feedback vulnerability nhanh ở đâu?
+- Platform hỏng có chặn toàn bộ release không, và recovery path là gì?
+
+## Lộ trình Security Engineer
+
+### Mục tiêu
+
+Bạn có thể threat-model Docker từ source/build tới registry/runtime/host, đặt control theo rủi ro và kiểm tra control bằng evidence thay vì checklist hình thức.
+
+### Thứ tự ưu tiên
+
+1. **Trust boundary:** daemon/socket, client context, host kernel và Desktop backend.
+2. **Image supply chain:** base image, dependency, digest, SBOM, provenance, signing và scanning.
+3. **Build security:** untrusted Dockerfile, build secret, SSH forwarding, remote context và cache.
+4. **Runtime identity:** root/non-root, user namespace, rootless mode.
+5. **Privilege reduction:** capabilities, seccomp, AppArmor/SELinux, read-only filesystem, devices và privileged mode.
+6. **Storage/network exposure:** bind mount, Docker socket, host network, published port và secret delivery.
+7. **Operations:** patching, incident evidence, audit/events, policy exception và rollback.
+
+Các phần chính:
+
+- [Security](/docs/security/)
+- [Nền tảng container](/docs/nen-tang-container/)
+- [BuildKit](/docs/buildkit/)
+- [Registry và distribution](/docs/registry-va-distribution/)
+- [Production operations](/docs/production-operations/)
+
+### Artifact tốt nghiệp
+
+Threat model một pipeline và runtime cụ thể:
+
+```text
+Git source -> CI runner -> builder/cache -> registry -> Docker host -> container
+```
+
+Với mỗi boundary, ghi:
+
+- asset và actor;
+- trust assumption;
+- attack path;
+- preventive/detective control;
+- evidence control đang hoạt động;
+- exception owner và expiry;
+- containment/rotation/rollback khi compromise.
+
+Sau đó chạy kiểm thử trong lab, chẳng hạn chứng minh container không ghi được root filesystem khi bật read-only, không có capability không cần thiết, secret không nằm trong image history và port chỉ bind đúng address.
+
+### Lỗi học tập cần tránh
+
+- coi scanner không báo CVE là image an toàn;
+- coi non-root là đủ dù container có dangerous mount/capability;
+- dùng `--privileged` cho security tool mà không thu hẹp blast radius;
+- mount Docker socket read-only và cho rằng API chỉ đọc;
+- áp hardening không test khiến signal handling, certificate, temp files hoặc healthcheck bị hỏng.
+
+## Lộ trình CI/CD và Release Engineer
+
+### Mục tiêu
+
+Bạn có thể tạo pipeline build một artifact có thể truy vết, test đúng artifact đó, publish an toàn và promote/rollback mà không rebuild khác nhau ở mỗi môi trường.
+
+### Thứ tự ưu tiên
+
+1. Dockerfile, build context và deterministic dependency inputs.
+2. BuildKit cache và cache isolation.
+3. Registry authentication, tag, digest và immutable release policy.
+4. CI secret handling; không đưa credential qua `ARG`, source hoặc log.
+5. Multi-platform build và test từng platform output.
+6. SBOM, provenance, signing/verification theo policy.
+7. Promotion strategy: build once, promote same digest.
+8. Rollback và retention: artifact cũ còn truy cập được và configuration tương thích.
+
+Các phần chính:
+
+- [BuildKit](/docs/buildkit/)
+- [Development và CI/CD](/docs/development-va-cicd/)
+- [Registry và distribution](/docs/registry-va-distribution/)
+- [Security](/docs/security/)
+
+### Artifact tốt nghiệp
+
+Pipeline phải chứng minh:
+
+- source revision liên kết được với image digest;
+- test chạy trên image candidate, không phải một build khác;
+- push chỉ xảy ra từ identity có scope hẹp;
+- cache không chứa secret và có policy chia sẻ;
+- release metadata/SBOM/provenance được lưu;
+- deployment dùng digest hoặc cơ chế immutable tương đương;
+- rollback chọn được artifact cũ mà không rebuild;
+- failed build/push không để tag release ở trạng thái mơ hồ.
+
+## Lộ trình Architect/Tech Lead
+
+### Mục tiêu
+
+Bạn đưa ra decision có điều kiện: container hóa phần nào, state đặt ở đâu, build/publish/deploy boundary nào và team sẽ vận hành failure ra sao.
+
+### Thứ tự ưu tiên
+
+1. Hoàn thành common core để review thiết kế không dựa trên slogan “portable” hoặc “lightweight”.
+2. Học storage, networking, security và resource model trước khi chọn deployment topology.
+3. Đọc [Production operations](/docs/production-operations/) để gắn kiến trúc với backup, capacity, upgrade và DR.
+4. So sánh [Docker Swarm](/docs/docker-swarm/), [Kubernetes và Docker](/docs/kubernetes-va-docker/) và [Hệ sinh thái và thay thế](/docs/he-sinh-thai-va-thay-the/) theo requirement thực tế.
+5. Dùng [Labs và case studies](/docs/labs-va-case-studies/) để kiểm tra decision end-to-end.
+
+### Artifact tốt nghiệp
+
+Viết ADR hoặc design document trả lời:
+
+- workload nào container hóa và workload nào cố ý không;
+- image ownership, update cadence và compatibility policy;
+- state/data ownership, backup và restore objective;
+- network exposure và trust zones;
+- runtime isolation theo tenant threat model;
+- single-host, Swarm, Kubernetes hay managed platform, kèm alternative;
+- observability/SLO và operational ownership;
+- migration, canary, rollback và decommission plan.
+
+## Ma trận chọn nhánh nhanh
+
+| Công việc bạn làm thường xuyên | Nhánh chính | Nhánh bổ trợ |
+|---|---|---|
+| Viết API/web/worker | Application Developer | CI/CD, Security |
+| Quản lý Docker host và incident | DevOps/SRE | Security, Platform |
+| Xây internal developer platform | Platform Engineer | SRE, CI/CD, Security |
+| Review hardening và supply chain | Security Engineer | Platform, SRE |
+| Xây build/release pipeline | CI/CD | Platform, Security |
+| Chọn kiến trúc và orchestrator | Architect/Tech Lead | SRE, Security |
+
+Nếu công việc trải nhiều cột, chọn nhánh theo **failure bạn là người on-call hoặc accountable**. Sau đó học nhánh bổ trợ đủ để phối hợp và review boundary giao nhau.
+
+## Cách chứng minh năng lực
+
+Đừng dùng “đã đọc xong Docker docs” làm tiêu chí. Một checkpoint tốt phải quan sát được:
+
+- bạn dự đoán đúng object và side effect trước command;
+- bạn có verification sau mỗi thay đổi;
+- bạn giải thích được failure bằng logs/state/network path;
+- bạn giữ secret và persistent data ngoài nơi không phù hợp;
+- bạn có cleanup/rollback và đã thử trong lab;
+- người khác có thể tái tạo artifact từ source/configuration;
+- recommendation của bạn có assumption và trade-off.
+
+Cuối cùng, làm [Kiểm tra kiến thức nền](/docs/bat-dau/kiem-tra-kien-thuc-nen/) để phát hiện lỗ hổng Linux, process, filesystem và networking trước khi bước vào nhánh đã chọn.
