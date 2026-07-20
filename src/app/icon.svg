@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Docker Learn</title>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#0A1B2A"/>
+  <rect x="14" y="10" width="26" height="8" rx="3" fill="#75B5FF"/>
+  <rect x="8" y="15" width="48" height="37" rx="7" fill="#1D63ED"/>
+  <path d="M16 15v37M48 15v37" stroke="#0A46B8" stroke-width="2" opacity=".72"/>
+  <path fill="#F7FBFF" fill-rule="evenodd" d="M21 20h11c9.2 0 15 4.7 15 12s-5.8 12-15 12H21V20Zm8 7v10h3c4.6 0 7-1.7 7-5s-2.4-5-7-5h-3Z"/>
+  <path d="M12 52h40" stroke="#75B5FF" stroke-width="3" stroke-linecap="round"/>
+</svg>
