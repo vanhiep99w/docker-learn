@@ -66,8 +66,9 @@ lowerdir(s) + upperdir + workdir
 
 Trong storage driver `overlay2` legacy của Docker, image layers làm lower directories và container layer làm upper directory. Với containerd image store, containerd snapshotter đảm nhiệm snapshot lifecycle; tên driver/layout quan sát được có thể khác dù kernel OverlayFS vẫn tham gia.
 
-> [!NOTE]
-> Docker Engine documentation hiện ghi Engine 29.0+ dùng containerd image store mặc định và xem `overlay2` là legacy storage driver được thay bởi containerd `overlayfs` snapshotter trong cấu hình đó. Khi troubleshooting, kiểm tra Engine version và image store thực tế thay vì hard-code `/var/lib/docker/overlay2`.
+<Callout type="info" title="Lưu ý">
+  Docker Engine documentation hiện ghi Engine 29.0+ dùng containerd image store mặc định và xem `overlay2` là legacy storage driver được thay bởi containerd `overlayfs` snapshotter trong cấu hình đó. Khi troubleshooting, kiểm tra Engine version và image store thực tế thay vì hard-code `/var/lib/docker/overlay2`.
+</Callout>
 
 ## Read, write và delete hoạt động thế nào?
 
@@ -227,8 +228,9 @@ docker system df -v
 
 Trong `docker info`, tìm image store/storage driver, backing filesystem và warnings. Field/output thay đổi theo version; lưu full output trong incident evidence.
 
-> [!WARNING]
-> Không sửa, di chuyển hoặc xóa trực tiếp file dưới Docker data root như `/var/lib/docker/`. Content store, metadata database, snapshots và reference counting do Engine/containerd quản lý. Thao tác trực tiếp có thể làm corrupt state và khiến image/container không truy cập được.
+<Callout type="warn" title="Cảnh báo">
+  Không sửa, di chuyển hoặc xóa trực tiếp file dưới Docker data root như `/var/lib/docker/`. Content store, metadata database, snapshots và reference counting do Engine/containerd quản lý. Thao tác trực tiếp có thể làm corrupt state và khiến image/container không truy cập được.
+</Callout>
 
 Nếu cần đổi storage driver/image store:
 

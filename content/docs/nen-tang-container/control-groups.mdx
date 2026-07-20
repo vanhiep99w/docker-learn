@@ -89,8 +89,9 @@ docker run --rm --memory 256m IMAGE
 
 Swap semantics phụ thuộc host, cgroup version và kết hợp `--memory`/`--memory-swap`. Docker documentation định nghĩa `--memory-swap` là tổng memory + swap khi đặt giá trị dương cùng `--memory`. Không copy một cấu hình swap giữa host mà chưa xác minh kernel support và daemon warning.
 
-> [!WARNING]
-> Tắt OOM killer mà không có hard memory boundary an toàn có thể đẩy host vào tình trạng cạn memory và làm kernel kill process quan trọng khác. Không dùng `--oom-kill-disable` như cách giữ application sống bằng mọi giá.
+<Callout type="warn" title="Cảnh báo">
+  Tắt OOM killer mà không có hard memory boundary an toàn có thể đẩy host vào tình trạng cạn memory và làm kernel kill process quan trọng khác. Không dùng `--oom-kill-disable` như cách giữ application sống bằng mọi giá.
+</Callout>
 
 ## PIDs: chống process explosion
 

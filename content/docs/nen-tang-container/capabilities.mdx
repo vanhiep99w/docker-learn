@@ -107,8 +107,9 @@ Pattern drop-all dễ review hơn nhưng không phải application nào cũng ch
 
 Tên trên CLI thường bỏ prefix `CAP_`; `NET_ADMIN` tương ứng `CAP_NET_ADMIN`.
 
-> [!IMPORTANT]
-> Chỉ add capability sau khi xác định permission check cụ thể. Không chuyển từ `Operation not permitted` thẳng sang `SYS_ADMIN` hoặc `--privileged`; cùng message có thể do seccomp, LSM, mount flags, user namespace hoặc device policy.
+<Callout type="warn" title="Quan trọng">
+  Chỉ add capability sau khi xác định permission check cụ thể. Không chuyển từ `Operation not permitted` thẳng sang `SYS_ADMIN` hoặc `--privileged`; cùng message có thể do seccomp, LSM, mount flags, user namespace hoặc device policy.
+</Callout>
 
 ## Lab: đo capability delta
 

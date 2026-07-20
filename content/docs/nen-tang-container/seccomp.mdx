@@ -57,8 +57,9 @@ Profile default cố cân bằng compatibility và protection. Nó thường ch�
 
 Danh sách cụ thể thay đổi theo Docker Engine, kernel architecture, capability và security updates. Không copy con số hoặc danh sách từ bài viết cũ làm baseline. Đối chiếu default profile đi cùng Engine đang chạy và release/security notes.
 
-> [!IMPORTANT]
-> Docker khuyến nghị không thay default seccomp profile nếu không có nhu cầu đã được kiểm chứng. Dùng `seccomp=unconfined` lâu dài làm tăng kernel attack surface và không phải cách sửa chung cho application lỗi.
+<Callout type="warn" title="Quan trọng">
+  Docker khuyến nghị không thay default seccomp profile nếu không có nhu cầu đã được kiểm chứng. Dùng `seccomp=unconfined` lâu dài làm tăng kernel attack surface và không phải cách sửa chung cho application lỗi.
+</Callout>
 
 ## Kiểm tra seccomp có đang active
 

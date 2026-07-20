@@ -42,8 +42,9 @@ Không layer nào trong sơ đồ tự tạo ra mọi đặc tính của contain
 | Image/runtime config được mô tả theo format chung nào? | OCI Image và Runtime Specifications |
 | Ai kéo image, tạo bundle và quản lý process? | Container engine, containerd, shim và OCI runtime |
 
-> [!IMPORTANT]
-> Namespace tạo một view tách biệt, không phải một authorization policy hoàn chỉnh. Cgroups kiểm soát tài nguyên, không che process hoặc file. Capabilities và seccomp thu hẹp quyền, nhưng không thay thế kernel patching, LSM, user mapping hay threat model phù hợp.
+<Callout type="warn" title="Quan trọng">
+  Namespace tạo một view tách biệt, không phải một authorization policy hoàn chỉnh. Cgroups kiểm soát tài nguyên, không che process hoặc file. Capabilities và seccomp thu hẹp quyền, nhưng không thay thế kernel patching, LSM, user mapping hay threat model phù hợp.
+</Callout>
 
 ## Một `docker run` đi qua những bước nào?
 

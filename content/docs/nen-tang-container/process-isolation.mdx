@@ -244,8 +244,9 @@ Container process có thể bị cô lập khỏi process khác nhưng vẫn g�
 - cập nhật kernel, Engine, containerd và OCI runtime;
 - dùng VM/sandbox runtime cho workload không tin cậy khi threat model yêu cầu.
 
-> [!WARNING]
-> Mount `/var/run/docker.sock`, bind mount host root, cấp device nhạy cảm hoặc chạy `--privileged` có thể trao quyền ảnh hưởng host lớn hơn rất nhiều so với container mặc định. “Process có PID 1 riêng” không bù lại các quyền này.
+<Callout type="warn" title="Cảnh báo">
+  Mount `/var/run/docker.sock`, bind mount host root, cấp device nhạy cảm hoặc chạy `--privileged` có thể trao quyền ảnh hưởng host lớn hơn rất nhiều so với container mặc định. “Process có PID 1 riêng” không bù lại các quyền này.
+</Callout>
 
 ## Quy trình điều tra process lifecycle
 

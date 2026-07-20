@@ -179,8 +179,9 @@ Hai PID namespace handles dự kiến giống nhau. Dọn container ngay sau lab
 docker rm -f ns-host-pid
 ```
 
-> [!WARNING]
-> Share host PID/network/IPC namespace có thể expose metadata và tăng khả năng tương tác với host. Chỉ dùng khi use case đã được threat-model review; không bật để né lỗi cấu hình application.
+<Callout type="warn" title="Cảnh báo">
+  Share host PID/network/IPC namespace có thể expose metadata và tăng khả năng tương tác với host. Chỉ dùng khi use case đã được threat-model review; không bật để né lỗi cấu hình application.
+</Callout>
 
 ## Inspect namespace mode từ Docker
 
