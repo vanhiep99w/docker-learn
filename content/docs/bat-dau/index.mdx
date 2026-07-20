@@ -16,8 +16,9 @@ Phần này dẫn bạn qua bốn kết quả chính:
 3. **Quan sát một lifecycle hoàn chỉnh:** pull image, create và start container, publish port, đọc trạng thái, stop rồi remove resource.
 4. **Biết học tiếp ở đâu:** chọn nhánh developer, operations, platform, security hoặc CI/CD thay vì đọc mọi trang theo cùng một độ sâu.
 
-> [!NOTE]
-> Bạn chưa cần biết Docker trước khi đọc phần này. Kinh nghiệm dùng terminal, hiểu file và directory, port TCP cùng mô hình client-server sẽ giúp thực hành thuận lợi hơn. Trang [Kiểm tra kiến thức nền](/docs/bat-dau/kiem-tra-kien-thuc-nen/) giúp bạn xác định phần cần ôn.
+<Callout type="info" title="Lưu ý">
+  Bạn chưa cần biết Docker trước khi đọc phần này. Kinh nghiệm dùng terminal, hiểu file và directory, port TCP cùng mô hình client-server sẽ giúp thực hành thuận lợi hơn. Trang [Kiểm tra kiến thức nền](/docs/bat-dau/kiem-tra-kien-thuc-nen/) giúp bạn xác định phần cần ôn.
+</Callout>
 
 ## Trật tự đọc đề xuất
 
@@ -71,8 +72,9 @@ Với mỗi ví dụ trong tài liệu, nên thực hiện đủ bốn bước:
 
 Ví dụ, đừng chỉ thấy trang web hiện ra rồi kết luận “Docker chạy được”. Hãy kiểm tra container nào đang phục vụ, host port ánh xạ tới container port nào, process còn chạy không và điều gì xảy ra sau khi stop container.
 
-> [!IMPORTANT]
-> Command Docker có thể tác động đến host, mở port ra network, gắn host directory hoặc cấp quyền cao cho process. Không thêm `--privileged`, không mount Docker socket và không copy command xóa dữ liệu khi chưa hiểu từng option.
+<Callout type="warn" title="Quan trọng">
+  Command Docker có thể tác động đến host, mở port ra network, gắn host directory hoặc cấp quyền cao cho process. Không thêm `--privileged`, không mount Docker socket và không copy command xóa dữ liệu khi chưa hiểu từng option.
+</Callout>
 
 ## Các mốc trong toàn bộ curriculum
 

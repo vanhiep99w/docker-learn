@@ -91,8 +91,9 @@ docker context show
 docker context ls
 ```
 
-> [!CAUTION]
-> Luôn kiểm tra context trước `docker system prune`, xóa volume, deploy hoặc thao tác production. Terminal local không đảm bảo daemon đích cũng là local.
+<Callout type="error" title="Thận trọng">
+  Luôn kiểm tra context trước `docker system prune`, xóa volume, deploy hoặc thao tác production. Terminal local không đảm bảo daemon đích cũng là local.
+</Callout>
 
 CLI còn chứa plugin/subcommand như `docker compose` và `docker buildx`. Vì plugin có version riêng, khi troubleshooting cần lấy đúng version:
 
@@ -115,8 +116,9 @@ Docker Desktop giải quyết các việc khác với Engine package cài trực
 
 Không dùng “Docker Desktop” và “Docker Engine” như từ đồng nghĩa. Một Linux server thường cài Docker Engine mà không cần desktop GUI. Một laptop macOS chạy Linux container qua environment do Desktop quản lý.
 
-> [!IMPORTANT]
-> Docker Desktop và Docker Engine có license/terms khác nhau. Chính sách có thể thay đổi; tổ chức phải kiểm tra [Docker subscription and licensing](https://docs.docker.com/subscription/) hiện hành thay vì dựa vào một con số chép lại trong tutorial.
+<Callout type="warn" title="Quan trọng">
+  Docker Desktop và Docker Engine có license/terms khác nhau. Chính sách có thể thay đổi; tổ chức phải kiểm tra [Docker subscription and licensing](https://docs.docker.com/subscription/) hiện hành thay vì dựa vào một con số chép lại trong tutorial.
+</Callout>
 
 ## Docker Build, BuildKit và Buildx
 
@@ -160,8 +162,9 @@ Một **service** trong Compose là cấu hình để tạo container, không ph
 
 Compose phù hợp cho local development, test, CI và một số deployment scenario. Nó không tự trở thành một multi-node orchestrator chỉ vì file có nhiều services. Scheduling, cluster reconciliation và high availability cần capability khác.
 
-> [!NOTE]
-> Tài liệu hiện đại dùng Compose v2 dưới dạng `docker compose`. Command `docker-compose` có dấu gạch nối thuộc thế hệ standalone cũ và có thể xuất hiện trong bài viết legacy. Khi đọc ví dụ, hãy kiểm tra version và migration guidance.
+<Callout type="info" title="Lưu ý">
+  Tài liệu hiện đại dùng Compose v2 dưới dạng `docker compose`. Command `docker-compose` có dấu gạch nối thuộc thế hệ standalone cũ và có thể xuất hiện trong bài viết legacy. Khi đọc ví dụ, hãy kiểm tra version và migration guidance.
+</Callout>
 
 Xem toàn bộ object model tại [Docker Compose](/docs/docker-compose/).
 

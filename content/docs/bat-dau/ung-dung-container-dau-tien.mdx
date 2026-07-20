@@ -38,8 +38,9 @@ Bạn cần:
 
 Nếu chưa cài, chuyển đến [Cài đặt và môi trường](/docs/cai-dat-va-moi-truong/). Không dùng `sudo` như phản xạ chung để che lỗi permission; hãy làm theo post-install hoặc rootless guidance phù hợp với hệ điều hành và threat model.
 
-> [!NOTE]
-> Command Docker trong bài giống nhau trên Bash, zsh và PowerShell vì không dùng shell-specific substitution. Output như container ID, digest, thời gian và port formatting có thể khác theo version/platform.
+<Callout type="info" title="Lưu ý">
+  Command Docker trong bài giống nhau trên Bash, zsh và PowerShell vì không dùng shell-specific substitution. Output như container ID, digest, thời gian và port formatting có thể khác theo version/platform.
+</Callout>
 
 ## Bước 1: Xác minh client và daemon
 
@@ -71,8 +72,9 @@ docker context show
 
 Trong môi trường học local, context thường là context local do Engine hoặc Desktop cung cấp. Nếu context trỏ tới remote host, các bước tiếp theo sẽ chạy và publish port trên remote host chứ không phải laptop của bạn.
 
-> [!CAUTION]
-> Dừng lại nếu context đang trỏ tới shared, staging hoặc production daemon. Tutorial sẽ pull image, tạo container và publish port trên daemon đích.
+<Callout type="error" title="Thận trọng">
+  Dừng lại nếu context đang trỏ tới shared, staging hoặc production daemon. Tutorial sẽ pull image, tạo container và publish port trên daemon đích.
+</Callout>
 
 ## Bước 2: Bảo đảm tên và port còn trống
 

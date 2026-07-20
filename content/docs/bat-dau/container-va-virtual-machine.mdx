@@ -78,8 +78,9 @@ Một container không phải một primitive duy nhất của Linux kernel. Run
 
 Các cơ chế trên tạo isolation có thể điều chỉnh. Một container dùng `--network host`, mount host filesystem, chạy `--privileged` hoặc nhận Docker socket đã làm mỏng đáng kể ranh giới mặc định.
 
-> [!WARNING]
-> Không coi container là sandbox an toàn chỉ vì process nằm trong container. Image không tin cậy, quyền root, Linux capabilities, device, bind mount, kernel vulnerability và Docker socket đều có thể thay đổi threat model.
+<Callout type="warn" title="Cảnh báo">
+  Không coi container là sandbox an toàn chỉ vì process nằm trong container. Image không tin cậy, quyền root, Linux capabilities, device, bind mount, kernel vulnerability và Docker socket đều có thể thay đổi threat model.
+</Callout>
 
 ## Resource model: cách ly không đồng nghĩa giới hạn
 

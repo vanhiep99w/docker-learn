@@ -109,8 +109,9 @@ Docker CLI ---- Docker API ----> Docker daemon
 
 Client và daemon thường ở cùng máy khi học local, nhưng chúng có thể ở hai máy khác nhau. Đây là lý do `docker version` hiển thị riêng phần **Client** và **Server**, còn Docker context có thể đổi daemon đích mà command đang điều khiển.
 
-> [!IMPORTANT]
-> Quyền truy cập Docker daemon là một trust boundary quan trọng. Người hoặc process có quyền điều khiển daemon thông thường có thể tạo container với mount và quyền ảnh hưởng mạnh tới host. Không chia sẻ Docker socket tùy tiện và luôn kiểm tra context trước command có tác động phá hủy.
+<Callout type="warn" title="Quan trọng">
+  Quyền truy cập Docker daemon là một trust boundary quan trọng. Người hoặc process có quyền điều khiển daemon thông thường có thể tạo container với mount và quyền ảnh hưởng mạnh tới host. Không chia sẻ Docker socket tùy tiện và luôn kiểm tra context trước command có tác động phá hủy.
+</Callout>
 
 ## Điều gì xảy ra khi chạy `docker run`?
 
