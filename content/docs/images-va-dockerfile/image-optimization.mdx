@@ -1,4 +1,310 @@
 ---
 title: "Tối ưu Docker image"
-description: "Khung tài liệu về Tối ưu Docker image, được chuẩn bị để bổ sung nội dung Docker chi tiết và ví dụ thực hành sau."
+description: "Tối ưu image theo kích thước, tốc độ build/pull, security, reproducibility và khả năng vận hành bằng quy trình đo lường thay vì chỉ giảm số MB."
 ---
+
+Image tốt không phải image nhỏ nhất bằng mọi giá. Tối ưu là cân bằng năm mục tiêu:
+
+1. **Correctness:** artifact chạy đúng trên target platform.
+2. **Security:** ít dependency/quyền thừa, có update và supply-chain evidence.
+3. **Reproducibility:** cùng input tạo artifact có thể truy vết, dependency được pin theo policy.
+4. **Performance:** build/cache/pull/startup đạt yêu cầu.
+5. **Operability:** signal, healthcheck, log, certificate, timezone và debug strategy rõ.
+
+Giảm 20 MB nhưng làm mất CA certificate hoặc shell cần cho entrypoint là regression. Thêm 300 MB compiler vào runtime vì dễ debug cũng là trade-off thường không hợp lý.
+
+## Đặt baseline trước khi sửa
+
+Build cùng target/platform và lưu metadata:
+
+```bash
+IMAGE='app:baseline'
+
+docker build --progress=plain --tag "$IMAGE" .
+docker image inspect "$IMAGE" \
+  --format 'id={{.Id}} size={{.Size}} user={{.Config.User}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}}'
+docker image history --no-trunc "$IMAGE"
+docker system df -v
+```
+
+Đo thêm trong CI/registry:
+
+- cold build và warm build duration;
+- context bytes;
+- compressed bytes push/pull và unique/shared layers;
+- CVE theo severity/fix availability, package count và SBOM;
+- startup/readiness time trên target platform;
+- behavior stop/restart và memory/disk runtime;
+- reproducibility/provenance theo policy.
+
+`docker image inspect .Size` là uncompressed logical size local, không đồng nhất bytes truyền qua registry hay disk tăng thêm do layer sharing.
+
+## Chọn base phù hợp, không chỉ nhỏ
+
+So sánh candidate bằng cùng application test:
+
+| Base | Lợi ích | Rủi ro cần kiểm tra |
+|---|---|---|
+| Full distro | Compatibility/debug/tooling rộng | Nhiều package, size lớn |
+| Slim | Cân bằng compatibility và size | Có thể thiếu CA/locale/tool |
+| Alpine | Nhỏ, package manager đơn giản | musl khác glibc, native module |
+| Distroless | Ít runtime tool/package thừa | Debug và shell script khó |
+| `scratch` | Filesystem tối thiểu | Cần binary/data tự đủ, không shell/CA mặc định |
+
+Dùng builder base đầy đủ và runtime base tối thiểu qua multi-stage. Pin release line/digest theo update policy, rebuild thường xuyên để nhận fix.
+
+## Multi-stage: đòn bẩy lớn nhất
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM golang:1.25 AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY . .
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/server ./cmd/server
+
+FROM scratch
+COPY --from=build /out/server /server
+USER 10001:10001
+ENTRYPOINT ["/server"]
+```
+
+`-s -w` giảm symbol/debug info và ảnh hưởng debugging/profiling; chỉ dùng khi đã quyết định giữ debug artifact/symbol ở nơi khác. `CGO_ENABLED=0` phải tương thích code. Không copy toàn bộ `/` từ builder.
+
+Đọc [Multi-stage builds](/docs/images-va-dockerfile/multi-stage-builds/) để thiết kế test/debug/runtime targets.
+
+## Context nhỏ và input theo lifecycle
+
+`.dockerignore` baseline:
+
+```text
+.git
+node_modules
+.venv
+coverage
+dist
+*.log
+.env
+.env.*
+*.pem
+```
+
+Sau đó tách dependency manifest:
+
+```dockerfile
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci
+COPY . .
+RUN npm run build
+```
+
+Lợi ích:
+
+- context transfer/checksum nhỏ;
+- source đổi không bắt dependency install lại;
+- secret/artifact local ít có cơ hội lọt vào builder;
+- cache graph phản ánh dependency thật.
+
+Không ignore `dist` nếu workflow có chủ đích copy prebuilt artifact; thay đổi workflow trước rồi mới đổi rule.
+
+## Cài ít package và cleanup cùng instruction
+
+Debian/Ubuntu:
+
+```dockerfile
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       ca-certificates \
+       curl \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+Alpine:
+
+```dockerfile
+RUN apk add --no-cache ca-certificates
+```
+
+Chỉ cài runtime dependency. Compiler, header, Git, test runner và package manager cache ở builder stage. Tránh meta-package kéo dependency không cần; nhưng đừng xóa shared library/license/CA mà app cần.
+
+Cleanup ở `RUN` sau không thu hồi bytes layer trước. Gộp lifecycle download→verify→extract→delete hoặc dùng stage tạm.
+
+## Cache mount tăng tốc mà không tăng final image
+
+```dockerfile
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip wheel --wheel-dir=/wheels --requirement requirements.txt
+```
+
+Cache mount có thể bị GC/chia sẻ, nên build phải đúng khi cache rỗng. Với CI stateless, export/import external cache theo trust boundary:
+
+```bash
+docker buildx build \
+  --cache-from type=registry,ref=registry.example.com/cache/app:main \
+  --cache-to type=registry,ref=registry.example.com/cache/app:main,mode=max \
+  --tag registry.example.com/team/app:1.4.2 \
+  --push \
+  .
+```
+
+Cache reference, credential và poisoning risk cần policy riêng. Không coi cache là signed release artifact.
+
+## Không tối ưu bằng cách gộp mọi `RUN`
+
+Gộp update/install/cleanup cùng lifecycle là đúng. Gộp toàn Dockerfile thành một shell script khổng lồ làm cache coarse, log khó đọc và maintenance kém.
+
+Ranh giới instruction nên theo tần suất thay đổi và trách nhiệm:
+
+```dockerfile
+COPY dependency-lockfiles ./
+RUN install-dependencies
+COPY source ./
+RUN build-and-test
+```
+
+Metadata instruction thêm clarity; giảm số layer bằng cách gộp `LABEL` từng là mẹo cũ, không nên làm readability kém nếu builder hiện hành không có lợi ích size tương ứng.
+
+## Artifact reproducible và dependency pinning
+
+Các nguồn mutable gồm:
+
+- base tag;
+- package version range/index;
+- Git branch/tag;
+- HTTP URL không checksum;
+- timestamp/random build input;
+- generated file ngoài source control.
+
+Kiểm soát bằng:
+
+- lockfile và exact dependency policy;
+- base tag + digest, có automation bump;
+- remote artifact checksum/signature;
+- clean checkout và deterministic build option;
+- provenance/SBOM;
+- build một lần, promote theo digest.
+
+Reproducibility và patch freshness có tension: pin đảm bảo lặp lại nhưng giữ dependency cũ. Giải pháp là bot/PR rebuild định kỳ có test, không bỏ pin hoặc bỏ update.
+
+## Security hardening không đo bằng size
+
+### Non-root runtime
+
+```dockerfile
+RUN addgroup -S -g 10001 app \
+    && adduser -S -D -H -u 10001 -G app app
+COPY --chown=10001:10001 --chmod=755 app /app/app
+USER 10001:10001
+```
+
+Runtime tiếp tục drop capabilities, read-only filesystem và mount writable path theo nhu cầu. `USER` không thay toàn bộ security controls.
+
+### Secret mount
+
+```dockerfile
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc,required=true npm ci
+```
+
+Không `COPY` secret rồi xóa. Không dùng `ARG`/`ENV` cho token.
+
+### Scan, SBOM và provenance
+
+Scan final image theo digest và chính sách fix availability; CVE count thô có false positive/context. Tạo SBOM/provenance trong CI và gắn với digest. Đọc [SBOM và provenance](/docs/buildkit/attestations-sbom-provenance/) và [Image scanning](/docs/security/image-scanning/).
+
+## Loại source và debug tool khỏi final image
+
+Kiểm tra final image không chứa:
+
+- `.git`, test fixture, coverage report;
+- compiler/header/package cache;
+- credential/config local;
+- source map/debug symbol nếu policy lưu ngoài;
+- shell/curl/editor không cần runtime.
+
+Nhưng có debug plan:
+
+- separate debug target cùng source/digest mapping;
+- external ephemeral debug container/toolbox;
+- symbol server/artifact retention;
+- logs/metrics/traces đủ chẩn đoán;
+- runbook cho image không shell.
+
+Minimal image không có observability là khó vận hành.
+
+## Compression và layer ordering
+
+Registry truyền compressed blobs; builder/exporter chọn compression theo output/backend. Đừng nén sẵn file text/binary chỉ để giảm image nếu ứng dụng phải giải nén mỗi startup hoặc làm delta/cache kém. Benchmark pull/startup thực.
+
+Đặt layer lớn, ít đổi (runtime/base dependency) trước layer source đổi thường xuyên để registry/cache reuse. Nếu thay đổi file trong layer, blob content mới phải push dù phần lớn bytes giống; stage/layer boundary có thể giảm upload khi chia theo lifecycle hợp lý.
+
+## Multi-platform optimization
+
+Mỗi platform có layer/manifest riêng, dù một số metadata/layer có thể share nếu content giống. Test:
+
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  --tag registry.example.com/team/app:1.4.2 \
+  --push \
+  .
+
+docker buildx imagetools inspect registry.example.com/team/app:1.4.2
+```
+
+Đảm bảo native dependency, libc và binary đúng platform. Emulation build chậm hơn và có thể không phát hiện mọi runtime issue; chạy smoke/integration test trên target architecture khi production cần.
+
+## Quy trình tối ưu theo vòng lặp
+
+### 1. Đo baseline
+
+Ghi size, build/pull time, context, package/CVE, startup và smoke test.
+
+### 2. Xác định phần tốn kém
+
+Dùng `docker image history`, SBOM, `build --progress=plain`, `buildx du`, registry metrics. Không đoán base là bottleneck nếu source artifact mới chiếm phần lớn.
+
+### 3. Thay một nhóm quyết định
+
+Ví dụ tách multi-stage hoặc sửa context/cache ordering. Không đổi base, package manager và build flags cùng lúc nếu muốn biết nguyên nhân regression.
+
+### 4. Rebuild sạch và warm
+
+```bash
+docker build --pull --no-cache --tag app:candidate .
+docker build --tag app:candidate-warm .
+```
+
+Clean build kiểm tra dependency/freshness; warm build kiểm tra cache.
+
+### 5. Test behavior và security
+
+Chạy unit/integration/smoke, signal shutdown, health, TLS, timezone, volume permission, non-root, scan và SBOM.
+
+### 6. So sánh rồi rollout
+
+Canary digest candidate, quan sát startup/error/latency, giữ known-good digest để rollback.
+
+## Checklist production image
+
+- [ ] Base trusted, supported, đúng libc/platform và có update owner.
+- [ ] Base/reference/dependency pinning phù hợp; có automation cập nhật.
+- [ ] Builder và runtime tách stage; final chỉ copy allowlist artifact.
+- [ ] Context nhỏ, `.dockerignore` loại file/secret không cần.
+- [ ] Cache ordering/mount giảm build time nhưng clean build vẫn đúng.
+- [ ] Package thừa/cache/source/debug tool không nằm final image.
+- [ ] Default user non-root và filesystem permission đã test.
+- [ ] `ENTRYPOINT`/`CMD` exec form, signal/healthcheck hoạt động.
+- [ ] CA/timezone/locale/dynamic library cần thiết không bị loại.
+- [ ] Secret không có trong layer, config, log, provenance hoặc external cache.
+- [ ] Final digest đã scan, có SBOM/provenance và smoke test từng platform.
+- [ ] Release promote cùng digest; known-good digest còn để rollback.
+
+## Nguồn chính thức
+
+- [Dockerfile best practices](https://docs.docker.com/build/building/best-practices/)
+- [Optimize cache usage](https://docs.docker.com/build/cache/optimize/)
+- [Multi-stage builds](https://docs.docker.com/build/building/multi-stage/)
+- [Build attestations](https://docs.docker.com/build/metadata/attestations/)
+- [Build secrets](https://docs.docker.com/build/building/secrets/)
