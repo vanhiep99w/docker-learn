@@ -41,7 +41,7 @@ Viết một câu mô tả điều người đọc phải làm được sau tran
 Trước khi soạn prose, liệt kê các phần cần có. Với một chủ đề kỹ thuật phức tạp, cân nhắc:
 
 - Bối cảnh và vấn đề cần giải quyết.
-- Mental model và thuật ngữ nền tảng.
+- Cách hình dung cốt lõi và thuật ngữ nền tảng.
 - Thành phần, trạng thái và quan hệ giữa chúng.
 - Luồng xử lý end-to-end.
 - Cách cấu hình hoặc triển khai từng bước.
@@ -59,7 +59,7 @@ Không biến danh sách này thành template cứng. Chỉ giữ phần phục 
 Ưu tiên flow sau khi phù hợp:
 
 1. Nêu vấn đề và giá trị thực tế.
-2. Xây mental model trước khi đưa nhiều chi tiết.
+2. Giúp người đọc hình dung đúng cơ chế trước khi đưa nhiều chi tiết.
 3. Giải thích cơ chế trước command hoặc manifest.
 4. Chuyển từ ví dụ tối thiểu sang cấu hình thực tế.
 5. Sau mỗi thao tác quan trọng, chỉ cách kiểm tra kết quả.
@@ -88,6 +88,7 @@ Xem tiêu chí và ví dụ chi tiết trong [`references/writing-quality.md`](r
 - Dùng placeholder nhất quán và nói rõ giá trị nào phải thay.
 - Dùng table khi người đọc cần so sánh cùng một tập tiêu chí; không dùng table cho prose dài hoặc quy trình tuần tự.
 - Dùng Mermaid cho flow, sequence, state và quan hệ; dùng code block cho config/command; dùng Steps cho quy trình có thứ tự.
+- Không giả định fence `mermaid` tự render. Trước khi thêm diagram, kiểm tra đủ remark transform, MDX component registration, runtime dependency và behavior trong browser.
 - Mỗi diagram phải có đoạn dẫn nhập và phần diễn giải điểm cần quan sát. Không dùng diagram chỉ để trang trí.
 - Nêu trade-off và điều kiện áp dụng; tránh biến recommendation có điều kiện thành quy tắc tuyệt đối.
 
@@ -113,21 +114,23 @@ description: "Mô tả cụ thể nội dung và giá trị của trang"
 8. Đọc lại toàn trang để bổ sung cầu nối giữa các section và loại bỏ lặp ý.
 9. Cập nhật category `meta.json` ngay khi thêm file; cập nhật root `meta.json` nếu thêm category. Đặt trang theo thứ tự học tập, không append tùy tiện.
 10. Kiểm tra internal link có trailing slash và code block có language.
-11. Chạy checklist trong [`references/review-checklist.md`](references/review-checklist.md).
-12. Chạy command validation/build mà repository yêu cầu.
+11. Với Mermaid hoặc client-side MDX component, mở trang trong browser và xác minh output đã render, theme, overflow và error state; build thành công không đủ chứng minh runtime hoạt động.
+12. Chạy checklist trong [`references/review-checklist.md`](references/review-checklist.md).
+13. Chạy lint, type-check và build/production preview mà repository yêu cầu.
 
 Dùng [`references/doc-template.md`](references/doc-template.md) như skeleton linh hoạt, không copy mọi section một cách máy móc.
 
 ## Workflow cải thiện tài liệu hiện có
 
 1. Giữ lại thông tin đúng và hữu ích; không rewrite chỉ để đổi văn phong.
-2. Kiểm tra lỗ hổng theo coverage map: thiếu mental model, request flow, verification, failure mode, security hoặc trade-off nào không.
+2. Kiểm tra lỗ hổng theo coverage map: thiếu cách giải thích nền tảng, request flow, verification, failure mode, security hoặc trade-off nào không.
 3. Kiểm tra flow: người đọc có gặp command trước khi hiểu object không; section có chuyển chủ đề đột ngột không; prerequisites có bị ẩn không.
 4. Mở rộng đến khi chủ đề hoàn chỉnh, bất kể trang sau khi sửa dài hơn các trang khác bao nhiêu.
 5. Thay câu dịch cứng, câu mơ hồ và đoạn liệt kê rời rạc bằng tiếng Việt tự nhiên.
 6. Kiểm chứng lại command, manifest, field, version-sensitive statement và link.
 7. Không làm mất anchor hoặc đổi slug nếu không cần. Nếu đổi file/slug, cập nhật toàn bộ internal link và `meta.json` liên quan.
-8. Chạy review checklist và build.
+8. Nếu trang dùng Mermaid hoặc component client-side, kiểm tra trực quan trên browser thay vì chỉ đọc source hoặc dựa vào build.
+9. Chạy review checklist, lint, type-check và build/production preview.
 
 ## Quy tắc Markdown/Fumadocs
 
@@ -138,8 +141,9 @@ Dùng [`references/doc-template.md`](references/doc-template.md) như skeleton l
 - Giữ dòng trống quanh table, code block và JSX block.
 - Viết internal URL theo dạng site route có trailing slash, ví dụ `/networking/ingress/`.
 - Chỉ dùng component đã được đăng ký trong page renderer.
+- Fence `mermaid` chỉ là source syntax. Chỉ dùng khi pipeline có plugin chuyển đổi và component `Mermaid` thực sự render SVG; nếu thiếu, bổ sung pipeline hoặc dùng diagram text thay vì để raw code xuất hiện trên trang.
 
-Đọc [`references/md-syntax.md`](references/md-syntax.md) khi sửa Markdown/MDX.
+Đọc [`references/md-syntax.md`](references/md-syntax.md) khi sửa Markdown/MDX. Đọc [`references/fumadocs-components.md`](references/fumadocs-components.md) trước khi thêm hoặc sửa Mermaid.
 
 ## Điều kiện hoàn thành
 
@@ -151,7 +155,8 @@ Chỉ hoàn tất khi:
 - Ví dụ có context, giải thích, cách chạy/áp dụng và cách xác minh khi phù hợp.
 - Claim kỹ thuật quan trọng đã được kiểm chứng.
 - Frontmatter, heading, link, navigation metadata và MDX syntax hợp lệ.
-- `npm run build` hoặc command build tương ứng đã thành công.
+- Mermaid/client-side component đã được kiểm tra trong browser ở production output; không còn raw source, blank frame, loading vô hạn hoặc lỗi theme/overflow.
+- Lint, type-check và `npm run build` hoặc command tương ứng đã thành công.
 
 ## Tài liệu tham chiếu
 

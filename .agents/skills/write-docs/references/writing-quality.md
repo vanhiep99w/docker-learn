@@ -66,17 +66,17 @@ Không bắt buộc trả lời đủ tám câu cho mọi subsection. Dùng matr
 
 ## Xây dựng mạch đọc
 
-### Đi từ mental model đến thao tác
+### Đi từ cách hình dung tổng thể đến thao tác
 
 Một flow dễ theo dõi thường có dạng:
 
 ```text
-Vấn đề → Mental model → Thành phần → Luồng xử lý
+Vấn đề → Cách hình dung tổng thể → Thành phần → Luồng xử lý
 → Cấu hình tối thiểu → Xác minh → Biến thể thực tế
 → Failure modes → Trade-offs → Best practices
 ```
 
-Có thể thay đổi thứ tự khi loại tài liệu yêu cầu, nhưng không đưa chi tiết implementation trước khi người đọc có đủ mental model để hiểu nó.
+Có thể thay đổi thứ tự khi loại tài liệu yêu cầu, nhưng không đưa chi tiết implementation trước khi người đọc có đủ nền tảng để hiểu nó.
 
 ### Tạo cầu nối giữa các section
 

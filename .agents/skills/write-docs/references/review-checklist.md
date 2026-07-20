@@ -7,7 +7,7 @@ Không dùng checklist để ép mọi trang có cùng cấu trúc. Đánh dấu
 - [ ] Câu hỏi trung tâm và đối tượng đọc rõ ràng.
 - [ ] Prerequisite cần thiết đã được nêu hoặc link.
 - [ ] Nội dung đủ để hiểu, áp dụng và xác minh mà không phải đoán bước quan trọng.
-- [ ] Mental model, mechanism và flow được giải thích ở mức phù hợp.
+- [ ] Cách hình dung tổng thể, cơ chế và luồng xử lý được giải thích ở mức phù hợp.
 - [ ] Failure mode, giới hạn và trade-off quan trọng không bị lược bỏ.
 - [ ] Không rút gọn chỉ để giống độ dài tài liệu khác.
 - [ ] Không có quota số từ/section chi phối cấu trúc.
@@ -45,6 +45,7 @@ Không dùng checklist để ép mọi trang có cùng cấu trúc. Đánh dấu
 - [ ] Table, code block và JSX có dòng trống xung quanh.
 - [ ] Internal link dùng site route và trailing slash.
 - [ ] Chỉ dùng MDX component đã đăng ký.
+- [ ] Nếu dùng Mermaid, remark plugin, component registration và runtime dependency đều tồn tại.
 - [ ] File mới/đổi tên đã cập nhật category `meta.json`.
 - [ ] Category mới đã cập nhật root `meta.json`.
 - [ ] Thứ tự `pages` theo curriculum, không append tùy tiện.
@@ -53,6 +54,11 @@ Không dùng checklist để ép mọi trang có cùng cấu trúc. Đánh dấu
 
 - [ ] Link và anchor quan trọng đã kiểm tra.
 - [ ] Mermaid/MDX syntax hợp lệ.
+- [ ] Trang dùng Mermaid/client component đã được mở trong browser từ production output.
+- [ ] Mermaid render thành SVG; không còn raw source, blank frame hoặc loading vô hạn.
+- [ ] Diagram/component đọc được ở light/dark theme và không phá layout trên viewport hẹp.
+- [ ] Development và production khác behavior đã được điều tra bằng browser console/network, không bị bỏ qua vì build pass.
 - [ ] Không còn placeholder, TODO hoặc câu chưa hoàn tất ngoài chủ đích.
 - [ ] Diff không chứa thay đổi ngoài phạm vi.
+- [ ] Lint và type-check của repository thành công.
 - [ ] `npm run build` hoặc build command của repository thành công.

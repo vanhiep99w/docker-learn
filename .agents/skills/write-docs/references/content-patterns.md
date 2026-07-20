@@ -32,7 +32,7 @@ Các section bên dưới là coverage gợi ý, không phải template bắt bu
 
 ## Concept hoặc fundamentals
 
-Mục tiêu: xây mental model chính xác trước khi người đọc thao tác.
+Mục tiêu: giúp người đọc hình dung chính xác hệ thống trước khi thao tác.
 
 Cân nhắc:
 
@@ -57,7 +57,7 @@ Cân nhắc:
 3. File tree hoặc starting state.
 4. Các bước tuần tự; mỗi bước gồm mục đích, thao tác và verification.
 5. Expected output tại milestone.
-6. Thử nghiệm làm thay đổi behavior để củng cố mental model.
+6. Thử nghiệm làm thay đổi behavior để củng cố cách hiểu cơ chế.
 7. Troubleshooting cho lỗi có xác suất cao.
 8. Cleanup và chi phí/tác động còn lại.
 9. Tổng kết điều vừa chứng minh.

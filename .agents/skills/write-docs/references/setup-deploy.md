@@ -91,35 +91,30 @@ Import component từ package/path phù hợp với version đang cài. Không g
 
 ## Mermaid support
 
-Một cách triển khai phổ biến là biến fenced code `mermaid` thành client component qua remark plugin:
+Mermaid cần cả compile-time transform và runtime renderer. Fence `mermaid` đơn lẻ vẫn build được nhưng chỉ hiện raw code nếu thiếu transform.
+
+Với Fumadocs version có `remarkMdxMermaid`, ưu tiên plugin tích hợp thay vì tự viết AST transform:
 
 ```ts
-function remarkMermaid() {
-  return (tree: import('mdast').Root) => {
-    visit(tree, 'code', (node, index, parent) => {
-      if (node.lang !== 'mermaid' || index === undefined || !parent) return;
+import { remarkMdxMermaid } from 'fumadocs-core/mdx-plugins';
 
-      (parent.children as unknown[])[index] = {
-        type: 'mdxJsxFlowElement',
-        name: 'MermaidDiagram',
-        attributes: [
-          { type: 'mdxJsxAttribute', name: 'chart', value: node.value },
-        ],
-        children: [],
-      };
-    });
-  };
-}
+export default defineConfig({
+  mdxOptions: {
+    remarkPlugins: [remarkMdxMermaid],
+  },
+});
 ```
 
-Đăng ký plugin trong `source.config.ts` theo API của `fumadocs-mdx` đang dùng. Client component phải:
+Plugin chuyển fence thành `<Mermaid chart="..." />`; nó không tự render SVG. Đăng ký component cùng tên trong MDX component map và cài runtime dependency phù hợp. Client component phải:
 
-- Import Mermaid ở client side nếu static rendering không có DOM.
-- Tạo ID an toàn và riêng cho mỗi diagram.
-- Tránh cập nhật DOM sau khi component unmount.
-- Hiển thị lỗi hữu ích hoặc ít nhất không làm hỏng cả page khi diagram sai.
+- chỉ dùng DOM ở client;
+- tạo ID an toàn và riêng cho mỗi diagram;
+- hủy/ignore async result sau khi unmount;
+- hỗ trợ light/dark theme và horizontal overflow;
+- dùng security mode chặt với source không hoàn toàn tin cậy;
+- hiển thị loading hữu hạn và fallback lỗi có source hữu ích.
 
-Kiểm tra implementation hiện có trước khi thay thế.
+Dynamic import/parser có thể chạy khác giữa development bundler và production build. Test cả hai bằng browser; build pass không chứng minh SVG đã xuất hiện. Nếu Fumadocs version không có plugin tích hợp, chỉ viết custom AST transform sau khi kiểm tra API/version và giữ component name/prop thống nhất.
 
 ## Cloudflare Pages
 
@@ -152,7 +147,8 @@ Kiểm tra thủ công:
 - Sidebar order.
 - Internal link có trailing slash.
 - Search index nếu có.
-- Mermaid và MDX component.
+- Mermaid và MDX component đã render trong browser, không chỉ compile.
+- Mermaid ở light/dark theme, viewport hẹp và invalid-syntax fallback.
 - Static assets trên base/output path.
 - 404 page và metadata.
 
@@ -162,7 +158,9 @@ Kiểm tra thủ công:
 |---|---|
 | Page không hiện sidebar | Category/root `meta.json` và slug |
 | Build lỗi MDX | Dòng được báo, JSX props, fence và component registration |
-| Mermaid không render | Remark plugin, client component và diagram syntax |
+| Mermaid hiện raw source | Thiếu remark transform hoặc plugin chưa đăng ký |
+| Mermaid blank/loading mãi | Client component, parser chunk, browser console/network và khác biệt dev/production bundler |
+| Mermaid sai màu/vỡ layout | Theme resolution, SVG sizing và horizontal overflow |
 | Link redirect hoặc 404 | Site route, trailing slash và static output path |
 | Cloudflare không thấy asset | Build output directory và `wrangler.toml` |
 | Route conflict | App Router files trùng với catch-all route |

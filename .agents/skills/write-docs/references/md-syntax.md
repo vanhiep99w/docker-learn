@@ -127,6 +127,8 @@ Nội dung bên trong component phải tuân theo syntax mà component/version h
 
 ## Mermaid
 
+Chỉ dùng fence `mermaid` sau khi xác nhận repository có remark transform, component `Mermaid` và runtime dependency. Fence đúng syntax vẫn có thể hiện như raw code nếu pipeline chưa đăng ký.
+
 Không indent code fence:
 
 ````markdown
@@ -139,7 +141,7 @@ sequenceDiagram
 
 Mỗi node ID nên ngắn và ổn định; đặt label mô tả trong `[]`. Tránh ký tự đặc biệt phức tạp trong label nếu parser báo lỗi.
 
-Diagram phải có đoạn dẫn và phần giải thích. Nếu diagram quá rộng, chia theo phase/layer thay vì giảm font đến mức khó đọc.
+Diagram phải có đoạn dẫn và phần giải thích. Nếu diagram quá rộng, chia theo phase/layer thay vì giảm font đến mức khó đọc. Sau build, mở production preview trong browser và xác minh SVG, theme, overflow cùng error/loading state.
 
 ## Lỗi thường gặp
 
@@ -149,6 +151,8 @@ Diagram phải có đoạn dẫn và phần giải thích. Nếu diagram quá r�
 | Link redirect/404 | Dùng source path hoặc thiếu `/` cuối | Đổi sang site route có trailing slash |
 | Code không highlight | Fence thiếu language | Thêm `bash`, `yaml`, `json`, `text`,... |
 | JSX không compile | Props/syntax sai hoặc component chưa đăng ký | Kiểm tra renderer và build error |
-| Mermaid không render | Fence bị indent hoặc syntax sai | Bỏ indent, kiểm tra diagram riêng |
+| Mermaid hiện raw source | Thiếu remark transform/component registration | Kiểm tra `source.config.ts`, MDX component map và runtime dependency |
+| Mermaid blank/loading mãi | Client runtime/parser chunk hoặc dev/prod bundler khác behavior | Kiểm tra browser console/network và production preview |
+| Mermaid báo syntax error | Fence indent hoặc diagram syntax sai | Bỏ indent, kiểm tra diagram riêng |
 | TOC sai hierarchy | Bỏ cấp heading hoặc anchor thủ công sai | Sắp lại H2 → H3 → H4 và cập nhật TOC |
 | Table vỡ | Thiếu dòng trống hoặc cell quá phức tạp | Tách block và đơn giản hóa table |

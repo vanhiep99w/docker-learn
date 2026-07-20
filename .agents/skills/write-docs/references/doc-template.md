@@ -13,7 +13,7 @@ description: "Mô tả người đọc sẽ hiểu hoặc thực hiện được
 ## Mục lục
 
 - [Tổng quan](#tổng-quan)
-- [1. Vấn đề và mental model](#1-vấn-đề-và-mental-model)
+- [1. Vấn đề và cách hình dung tổng thể](#1-vấn-đề-và-cách-hình-dung-tổng-thể)
 - [2. Thành phần và cơ chế](#2-thành-phần-và-cơ-chế)
 - [3. Luồng xử lý](#3-luồng-xử-lý)
 - [4. Thực hành](#4-thực-hành)
@@ -31,9 +31,9 @@ Nêu chủ đề là gì, giải quyết vấn đề nào, phạm vi trang và k
 > [!IMPORTANT]
 > Nêu invariant, giới hạn hoặc điểm dễ hiểu sai nhất nếu cần.
 
-## 1. Vấn đề và mental model
+## 1. Vấn đề và cách hình dung tổng thể
 
-Mô tả starting state, pain point và cách nhìn đơn giản giúp hiểu các phần sau.
+Mô tả starting state, pain point và cách nhìn đơn giản giúp hiểu các phần sau. Chỉ dùng block tiếp theo khi repository đã hỗ trợ Mermaid end-to-end; nếu chưa, dùng `text` diagram.
 
 ```mermaid
 flowchart LR
@@ -104,7 +104,7 @@ Nếu chẩn đoán có nhiều nhánh, dùng flow theo request path thay vì da
 
 ## Cách điều chỉnh
 
-- Với concept page, mở rộng mental model và cơ chế; phần thực hành có thể ngắn.
+- Với concept page, mở rộng cách hình dung cốt lõi và cơ chế; phần thực hành có thể ngắn.
 - Với tutorial, chuyển prerequisite và Steps lên trước; thêm cleanup.
 - Với reference, thay flow bằng field/option tables và compatibility notes.
 - Với troubleshooting, bắt đầu từ triệu chứng và decision tree.

@@ -1,6 +1,6 @@
 # Fumadocs components trong Markdown/MDX
 
-Chỉ dùng component nếu repository đã đăng ký nó trong MDX renderer, thường tại `src/app/[[...slug]]/page.tsx`. Kiểm tra source trước khi viết; component và props có thể khác theo version.
+Chỉ dùng component nếu repository đã đăng ký nó trong MDX renderer. Với repository này, kiểm tra `src/components/mdx.tsx`, `src/app/docs/[[...slug]]/page.tsx` và `source.config.ts`; component và props có thể khác theo version.
 
 ## Mục lục
 
@@ -140,6 +140,29 @@ Xác minh default và type theo version. Không copy default từ trí nhớ.
 
 ## Mermaid
 
+Fence `mermaid` không tự tạo diagram. Nếu pipeline không nhận diện language này, Fumadocs chỉ hiển thị raw source như một code block dù `npm run build` vẫn thành công.
+
+### Kiểm tra pipeline trước khi viết
+
+Repository hiện tại cần đủ bốn lớp:
+
+1. `source.config.ts` đăng ký `remarkMdxMermaid` trong `mdxOptions.remarkPlugins`.
+2. `src/components/mdx.tsx` đăng ký component `Mermaid`.
+3. `src/components/mermaid.tsx` nhận prop `chart` và render SVG ở client.
+4. `package.json` có runtime dependency `mermaid`.
+
+Kiểm tra source thay vì suy luận từ một fence có sẵn:
+
+```bash
+grep -n 'remarkMdxMermaid' source.config.ts
+grep -n 'Mermaid' src/components/mdx.tsx
+npm ls mermaid --depth=0
+```
+
+Nếu một lớp còn thiếu, bổ sung renderer trước hoặc dùng diagram dạng `text`. Không để raw `sequenceDiagram` xuất hiện trên trang như thể đó là output hoàn chỉnh.
+
+### Viết diagram
+
 ````mdx
 ```mermaid
 sequenceDiagram
@@ -159,4 +182,27 @@ Chọn diagram type theo câu hỏi:
 - `stateDiagram-v2`: lifecycle/state transition.
 - `graph`: quan hệ topology đơn giản.
 
-Giải thích diagram trong prose và chạy build để kiểm tra remark transform cùng Mermaid syntax.
+Giữ label ngắn, tránh diagram quá rộng và luôn giải thích điểm cần quan sát trong prose.
+
+### Xác minh end-to-end
+
+Chạy lint, type-check và build theo script repository, sau đó serve production output và mở đúng route trong browser:
+
+```bash
+npm run lint
+npm run types:check
+npm run build
+npm run preview
+```
+
+Kiểm tra cả light/dark theme và viewport hẹp. Diagram đạt yêu cầu khi:
+
+- browser chứa SVG, không phải raw Mermaid source;
+- không dừng vô hạn ở loading state;
+- text và đường nối đọc được ở cả hai theme;
+- diagram rộng có horizontal overflow thay vì phá layout;
+- syntax/runtime error hiện fallback có ích thay vì khung trống.
+
+Build chỉ chứng minh MDX compile. Client-side rendering, dynamic import và diagram parser có thể khác giữa development bundler và production output; nếu behavior khác nhau, kiểm tra browser console/network ở cả hai mode và không tuyên bố hoàn tất chỉ dựa trên terminal.
+
+Với Mermaid source không tin cậy, đánh giá XSS và URL/click behavior; ưu tiên `securityLevel: 'strict'` và không render input tùy ý từ người dùng.
