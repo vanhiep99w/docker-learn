@@ -10,18 +10,22 @@ Docker dùng nhiều từ quen thuộc như “image”, “volume” và “ser
 ## Bản đồ quan hệ tối thiểu
 
 ```text
-Dockerfile + build context
-          |
-          | build bởi BuildKit/builder
-          v
-        image -- push/pull --> registry repository
-          |
-          | create/run + runtime configuration
-          v
-      container
-       |      |
-       |      +-- network / published port
-       +--------- volume, bind mount, writable layer
+┌────────────────────────────┐
+│ Dockerfile + build context │
+└──────────────┬─────────────┘
+               │ BuildKit / builder
+               ▼
+        ┌─────────────┐      push / pull      ┌─────────────────────┐
+        │    Image    │ ◀───────────────────▶ │ Registry repository │
+        └──────┬──────┘                      └─────────────────────┘
+               │ create / run + runtime configuration
+               ▼
+        ┌─────────────┐
+        │  Container  │
+        └──────┬──────┘
+               ├─ Network / published port
+               ├─ Volume / bind mount
+               └─ Writable layer
 ```
 
 Nếu chỉ nhớ một điều, hãy nhớ: **Dockerfile mô tả build; image là artifact; container là runtime instance; registry phân phối image.**

@@ -10,18 +10,22 @@ Trong bài thực hành này, bạn sẽ chạy một web application có sẵn 
 Luồng request sẽ có dạng:
 
 ```text
-Browser
-  |
-  | HTTP http://localhost:8080
-  v
-Docker host 127.0.0.1:8080
-  |
-  | published port
-  v
-Container port 80
-  |
-  v
-Web process từ image docker/welcome-to-docker
+┌──────────────────────────────┐
+│           Browser            │
+└──────────────┬───────────────┘
+               │ HTTP http://localhost:8080
+               ▼
+┌──────────────────────────────┐
+│ Docker host 127.0.0.1:8080   │
+└──────────────┬───────────────┘
+               │ published port
+               ▼
+┌──────────────────────────────┐
+│ Container port 80            │
+├──────────────────────────────┤
+│ Web process                  │
+│ docker/welcome-to-docker     │
+└──────────────────────────────┘
 ```
 
 Bạn sẽ tạo một container tên `welcome-docker`. Tên cố định làm các command sau dễ đọc và giúp nhận biết lỗi name conflict.
@@ -337,19 +341,27 @@ docker image rm docker/welcome-to-docker
 Bạn đã đi qua lifecycle:
 
 ```text
-pull image
-    |
-create + start container (`docker run`)
-    |
-inspect state + send request + read logs
-    |
-stop container
-    |
-start same container
-    |
-stop + remove container
-    |
-image remains until separately removed
+┌──────────────────────────────────────────┐
+│ Pull image                               │
+└────────────────────┬─────────────────────┘
+                     ▼
+┌──────────────────────────────────────────┐
+│ Create + start container (`docker run`)  │
+└────────────────────┬─────────────────────┘
+                     ▼
+┌──────────────────────────────────────────┐
+│ Inspect state + request + logs           │
+└────────────────────┬─────────────────────┘
+                     ▼
+┌──────────────────────────────────────────┐
+│ Stop → start lại cùng container          │
+└────────────────────┬─────────────────────┘
+                     ▼
+┌──────────────────────────────────────────┐
+│ Stop + remove container                  │
+├──────────────────────────────────────────┤
+│ Image vẫn tồn tại cho đến khi được xóa   │
+└──────────────────────────────────────────┘
 ```
 
 Các boundary cần ghi nhớ:

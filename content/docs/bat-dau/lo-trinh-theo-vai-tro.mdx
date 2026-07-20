@@ -221,7 +221,14 @@ Các phần chính:
 Threat model một pipeline và runtime cụ thể:
 
 ```text
-Git source -> CI runner -> builder/cache -> registry -> Docker host -> container
+┌────────────┐   ┌───────────┐   ┌─────────────────┐
+│ Git source │──▶│ CI runner │──▶│ Builder + cache │
+└────────────┘   └───────────┘   └────────┬────────┘
+                                          │
+                                          ▼
+┌───────────┐   ┌─────────────┐   ┌─────────────────┐
+│ Container │◀──│ Docker host │◀──│    Registry     │
+└───────────┘   └─────────────┘   └─────────────────┘
 ```
 
 Với mỗi boundary, ghi:

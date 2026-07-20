@@ -20,17 +20,20 @@ Một application hiếm khi chỉ gồm source code. Nó còn phụ thuộc và
 Docker chuyển phần lớn mô tả môi trường runtime thành artifact có thể version và phân phối:
 
 ```text
-Source code + Dockerfile + build context
-                  |
-                  | docker build
-                  v
-                Image
-                  |
-        push/pull qua registry
-                  |
-                  | docker run + runtime configuration
-                  v
-              Container
+┌──────────────────────────────────────────┐
+│ Source code + Dockerfile + build context │
+└────────────────────┬─────────────────────┘
+                     │ docker build
+                     ▼
+              ┌─────────────┐
+              │    Image    │
+              └──────┬──────┘
+                     │ push / pull qua registry
+                     │ docker run + runtime configuration
+                     ▼
+              ┌─────────────┐
+              │  Container  │
+              └─────────────┘
 ```
 
 Image không loại bỏ mọi khác biệt môi trường. Kernel, CPU architecture, Docker configuration, mounted data, secret, network policy và external service vẫn nằm ngoài image. Vì vậy, “chạy trong container” cải thiện tính nhất quán nhưng không có nghĩa là application chạy giống hệt trên mọi host bất kể platform và configuration.
@@ -64,9 +67,15 @@ Khi container chạy, process bên trong sử dụng filesystem từ image cộn
 Một image có thể tạo nhiều container độc lập:
 
 ```text
-                  +--> container web-1
-image web:1.0 ----+--> container web-2
-                  +--> container web-test
+                    ┌────────────────────┐
+                ┌──▶│ Container web-1    │
+┌──────────────┐│   └────────────────────┘
+│ Image web:1.0├┼──▶┌────────────────────┐
+└──────────────┘│   │ Container web-2    │
+                │   └────────────────────┘
+                └──▶┌────────────────────┐
+                    │ Container web-test │
+                    └────────────────────┘
 ```
 
 Các container cùng dùng content từ image nhưng có writable layer, process và runtime configuration riêng.
@@ -95,16 +104,18 @@ Không phải lúc nào mọi phần cũng xuất hiện. Khi lược registry h
 Khi chạy command, CLI không tự tạo container. Docker client gửi request qua Docker API tới daemon `dockerd`. Daemon quản lý image, container, network và volume, đồng thời phối hợp với container runtime ở layer thấp hơn.
 
 ```text
-Bạn
- |
- | docker run ...
- v
-Docker CLI ---- Docker API ----> Docker daemon
-                                    |
-                                    +-- tìm/pull image từ registry
-                                    +-- tạo filesystem và network
-                                    +-- cấu hình runtime
-                                    +-- khởi động process container
+┌────────────┐      docker run       ┌────────────┐
+│    Bạn     │ ────────────────────▶ │ Docker CLI │
+└────────────┘                       └─────┬──────┘
+                                         │ Docker API
+                                         ▼
+                              ┌──────────────────────┐
+                              │    Docker daemon     │
+                              └──────────┬───────────┘
+                                         ├─ Tìm hoặc pull image
+                                         ├─ Tạo filesystem và network
+                                         ├─ Áp dụng runtime configuration
+                                         └─ Khởi động process container
 ```
 
 Client và daemon thường ở cùng máy khi học local, nhưng chúng có thể ở hai máy khác nhau. Đây là lý do `docker version` hiển thị riêng phần **Client** và **Server**, còn Docker context có thể đổi daemon đích mà command đang điều khiển.

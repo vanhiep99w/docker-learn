@@ -10,25 +10,26 @@ Trang này dùng một workflow làm trục: **viết cấu hình → build imag
 ## Bản đồ tổng thể
 
 ```text
-Developer / CI
-     |
-     | Docker CLI, Compose CLI, Buildx
-     v
-+---------------- Docker API ----------------+
-|                                             |
-| Docker Engine                               |
-|   +-- dockerd: quản lý Docker objects       |
-|   +-- BuildKit: thực thi build              |
-|   +-- containerd/runtime: chạy container    |
-|                                             |
-+--------------------+------------------------+
-                     |
-              push / pull image
-                     |
-                     v
-          Registry (Docker Hub/private)
+┌───────────────────────────────────────────────┐
+│ Developer / CI                                │
+│ Docker CLI · Compose CLI · Buildx             │
+└──────────────────────┬────────────────────────┘
+                       │ Docker API
+                       ▼
+┌───────────────────────────────────────────────┐
+│ Docker Engine                                 │
+├───────────────────────────────────────────────┤
+│ dockerd              Quản lý Docker objects   │
+│ BuildKit             Thực thi build           │
+│ containerd / runtime Chạy container           │
+└──────────────────────┬────────────────────────┘
+                       │ push / pull image
+                       ▼
+┌───────────────────────────────────────────────┐
+│ Registry · Docker Hub hoặc private registry   │
+└───────────────────────────────────────────────┘
 
-Docker Desktop đóng gói và tích hợp nhiều thành phần trên
+Docker Desktop đóng gói và tích hợp các thành phần trên
 cho môi trường developer trên macOS, Windows và Linux.
 ```
 
@@ -200,9 +201,11 @@ Docker Scout là nhóm capability của Docker để phân tích software supply
 Trong mental model, Scout nằm sau hoặc quanh bước build/publish:
 
 ```text
-Build image --> tạo/đọc SBOM --> phân tích policy/vulnerability
-     |                                  |
-     +------------- publish ------------+
+┌─────────────┐   ┌────────────────┐   ┌────────────────────────┐
+│ Build image │──▶│ Tạo / đọc SBOM │──▶│ Policy + vulnerability │
+└──────┬──────┘   └────────────────┘   └───────────┬────────────┘
+       │                                           │
+       └──────────────── publish ──────────────────┘
 ```
 
 Nếu sử dụng, hãy đọc manual và subscription hiện hành; không giả định mọi capability đều có cùng availability trong mọi plan hoặc environment.

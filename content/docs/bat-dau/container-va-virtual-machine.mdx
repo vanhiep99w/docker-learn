@@ -14,15 +14,19 @@ Khác biệt này giải thích phần lớn trade-off về tốc độ khởi �
 Hypervisor cung cấp virtual CPU, memory, disk và network device cho mỗi VM. Bên trong VM có guest OS, kernel, system services, library và application.
 
 ```text
-+----------------------+  +----------------------+
-| Application A        |  | Application B        |
-| Libraries            |  | Libraries            |
-| Guest OS + kernel    |  | Guest OS + kernel    |
-+----------------------+  +----------------------+
-|          Hypervisor / virtual hardware         |
-+------------------------------------------------+
-|              Host hardware / host OS           |
-+------------------------------------------------+
+┌──────────────────────────┬──────────────────────────┐
+│ Virtual machine A        │ Virtual machine B        │
+├──────────────────────────┼──────────────────────────┤
+│ Application A            │ Application B            │
+│ Libraries                │ Libraries                │
+│ Guest OS + guest kernel  │ Guest OS + guest kernel  │
+└─────────────┬────────────┴─────────────┬────────────┘
+              │                          │
+┌─────────────▼──────────────────────────▼────────────┐
+│            Hypervisor / virtual hardware            │
+├─────────────────────────────────────────────────────┤
+│               Host OS / physical hardware           │
+└─────────────────────────────────────────────────────┘
 ```
 
 Mỗi guest kernel tạo một ranh giới mạnh và cho phép workload dùng operating system hoặc kernel khác với workload ở VM kế bên, trong giới hạn hypervisor và hardware support.
@@ -32,16 +36,20 @@ Mỗi guest kernel tạo một ranh giới mạnh và cho phép workload dùng o
 Với Linux container thông thường, Docker dùng kernel features để tạo góc nhìn tách biệt về process, network, mount, hostname và các resource khác. Cgroups giúp account và giới hạn tài nguyên. Image cung cấp user space cần cho application, nhưng các container không mang guest Linux kernel riêng.
 
 ```text
-+----------------------+  +----------------------+
-| App A + user space   |  | App B + user space   |
-| Container process(es)|  | Container process(es)|
-+----------------------+  +----------------------+
-| Container runtime + Docker Engine              |
-+------------------------------------------------+
-| Shared host kernel                             |
-+------------------------------------------------+
-| Host OS / hardware                             |
-+------------------------------------------------+
+┌──────────────────────────┬──────────────────────────┐
+│ Container A              │ Container B              │
+├──────────────────────────┼──────────────────────────┤
+│ App A + user space       │ App B + user space       │
+│ Process(es)              │ Process(es)              │
+└─────────────┬────────────┴─────────────┬────────────┘
+              │                          │
+┌─────────────▼──────────────────────────▼────────────┐
+│           Container runtime + Docker Engine         │
+├─────────────────────────────────────────────────────┤
+│                  Shared host kernel                 │
+├─────────────────────────────────────────────────────┤
+│                Host OS / physical hardware          │
+└─────────────────────────────────────────────────────┘
 ```
 
 “Dùng chung kernel” không có nghĩa các process nhìn thấy toàn bộ host. Namespace tạo view khác nhau, filesystem layer và mount tạo root filesystem riêng, còn security control giới hạn syscall/capability. Tuy vậy, kernel vẫn là phần dùng chung và là một trust boundary phải bảo vệ.
@@ -122,14 +130,18 @@ Linux container cần Linux kernel. Trên macOS, host không chạy Linux kernel
 Luồng khái niệm là:
 
 ```text
-macOS/Windows terminal
-        |
-        | Docker CLI / API
-        v
-Docker Desktop managed Linux environment
-        |
-        +-- Docker Engine
-        +-- Linux containers sharing its Linux kernel
+┌─────────────────────────────┐
+│ macOS / Windows terminal    │
+│ Docker CLI                  │
+└──────────────┬──────────────┘
+               │ Docker API
+               ▼
+┌───────────────────────────────────────────────┐
+│ Docker Desktop managed Linux environment      │
+├───────────────────────────────────────────────┤
+│ Docker Engine                                 │
+│ └─ Linux containers sharing its Linux kernel  │
+└───────────────────────────────────────────────┘
 ```
 
 Điều này giải thích một số khác biệt về file sharing, path, resource allocation và network giữa Docker Desktop với Docker Engine chạy native trên Linux. Khi troubleshooting, cần xác định lỗi nằm ở application container, Engine, VM/backend hay host OS.
@@ -141,11 +153,16 @@ Docker Desktop cũng có bản Linux, nhưng kiến trúc và use case không n�
 Kiến trúc production phổ biến đặt Docker Engine hoặc container runtime trong VM:
 
 ```text
-Physical/cloud infrastructure
-          |
-          +-- VM node 1 --> containers
-          +-- VM node 2 --> containers
-          +-- VM node 3 --> containers
+┌──────────────────────────────────────────────┐
+│ Physical / cloud infrastructure              │
+└──────────────────────┬───────────────────────┘
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+│ VM node 1    │ │ VM node 2    │ │ VM node 3    │
+│ Containers   │ │ Containers   │ │ Containers   │
+└──────────────┘ └──────────────┘ └──────────────┘
 ```
 
 VM cung cấp boundary ở cấp node, image chuẩn hóa application ở cấp process, còn orchestrator có thể scheduling container qua nhiều node. Cách xếp layer này hỗ trợ:

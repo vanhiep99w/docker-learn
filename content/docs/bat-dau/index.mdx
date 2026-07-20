@@ -42,19 +42,23 @@ Nếu hoàn toàn mới, hãy đọc theo thứ tự trên. Nếu đã từng ch
 Hầu hết workflow Docker có thể đọc theo chuỗi sau:
 
 ```text
-Source code + dependencies
-          |
-          | docker build
-          v
-        Image -------- docker push --------> Registry
-          |                                      |
-          | docker run                           | docker pull
-          v                                      v
-      Container <---------- Docker Engine -------+
-          |
-          +-- network: nhận và gửi traffic
-          +-- volume/bind mount: giữ hoặc chia sẻ dữ liệu
-          +-- logs/metrics/events: cung cấp tín hiệu vận hành
+┌────────────────────────────┐
+│ Source code + dependencies │
+└──────────────┬─────────────┘
+               │ docker build
+               ▼
+        ┌─────────────┐       docker push       ┌────────────┐
+        │    Image    │ ──────────────────────▶ │  Registry  │
+        │             │ ◀────────────────────── │            │
+        └──────┬──────┘       docker pull       └────────────┘
+               │ docker run
+               ▼
+        ┌─────────────┐
+        │  Container  │
+        └──────┬──────┘
+               ├─ Network: nhận và gửi traffic
+               ├─ Storage: giữ hoặc chia sẻ dữ liệu
+               └─ Logs / metrics / events
 ```
 
 Điểm quan trọng nhất là **image không phải container**. Image là package bất biến dùng làm đầu vào. Container là một instance có cấu hình runtime, process, network và writable layer riêng. Một image có thể tạo ra nhiều container; xóa container không tự động xóa image.
