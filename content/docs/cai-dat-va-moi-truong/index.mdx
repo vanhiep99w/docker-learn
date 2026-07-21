@@ -123,15 +123,14 @@ Ghi lại version, context, config và rollback plan
 ## Bản đồ nội dung trong phần này
 
 1. [Cài Docker Engine trên Linux](/docs/cai-dat-va-moi-truong/docker-engine-linux/) trình bày installation bằng official APT/DNF repository và cách xác minh service.
-2. [Docker với WSL 2](/docs/cai-dat-va-moi-truong/wsl2/) giải thích Docker Desktop backend, WSL integration và vị trí đặt source code.
-3. [Thiết lập Linux sau cài đặt](/docs/cai-dat-va-moi-truong/linux-post-install/) chọn quyền socket, startup, logging và baseline vận hành.
-4. [Rootless mode](/docs/cai-dat-va-moi-truong/rootless-mode/) cài daemon trong user namespace và đánh giá giới hạn.
-5. [Cấu hình Docker daemon](/docs/cai-dat-va-moi-truong/daemon-configuration/) cung cấp workflow sửa `daemon.json`, validate, rollout và rollback.
-6. [Proxy và registry mirror](/docs/cai-dat-va-moi-truong/proxy-and-mirror/) tách network của daemon, build và container, đồng thời cấu hình pull-through cache.
-7. [Nâng cấp và gỡ cài đặt](/docs/cai-dat-va-moi-truong/upgrade-uninstall/) giữ dữ liệu, kiểm soát downtime và phân biệt remove package với purge state.
-8. [Xác minh môi trường](/docs/cai-dat-va-moi-truong/verify-environment/) chạy checklist end-to-end và chẩn đoán theo layer.
+2. [Thiết lập Linux sau cài đặt](/docs/cai-dat-va-moi-truong/linux-post-install/) chọn quyền socket, startup, logging và baseline vận hành.
+3. [Rootless mode](/docs/cai-dat-va-moi-truong/rootless-mode/) cài daemon trong user namespace và đánh giá giới hạn.
+4. [Cấu hình Docker daemon](/docs/cai-dat-va-moi-truong/daemon-configuration/) cung cấp workflow sửa `daemon.json`, validate, rollout và rollback.
+5. [Proxy và registry mirror](/docs/cai-dat-va-moi-truong/proxy-and-mirror/) tách network của daemon, build và container, đồng thời cấu hình pull-through cache.
+6. [Nâng cấp và gỡ cài đặt](/docs/cai-dat-va-moi-truong/upgrade-uninstall/) giữ dữ liệu, kiểm soát downtime và phân biệt remove package với purge state.
+7. [Xác minh môi trường](/docs/cai-dat-va-moi-truong/verify-environment/) chạy checklist end-to-end và chẩn đoán theo layer.
 
-Nếu chỉ cần chuẩn bị laptop Windows, có thể vào thẳng trang WSL 2. Nếu quản trị Linux server, nên đọc theo thứ tự từ Engine Linux đến verification.
+Nếu quản trị Linux server, nên đọc theo thứ tự từ Engine Linux đến verification. Với laptop Windows hoặc macOS, đối chiếu thêm tài liệu Docker Desktop chính thức trước khi áp dụng các bước Linux trực tiếp.
 
 ## Tiêu chí hoàn thành
 

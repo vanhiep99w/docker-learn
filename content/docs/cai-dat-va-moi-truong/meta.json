@@ -3,7 +3,6 @@
   "pages": [
     "index",
     "docker-engine-linux",
-    "wsl2",
     "linux-post-install",
     "rootless-mode",
     "daemon-configuration",

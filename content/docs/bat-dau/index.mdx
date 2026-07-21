@@ -5,7 +5,7 @@ description: "Cách sử dụng bộ tài liệu Docker theo lộ trình từ me
 
 Docker dễ bắt đầu bằng một lệnh, nhưng dùng Docker đúng đòi hỏi nhiều hơn việc ghi nhớ command. Bạn cần phân biệt image với container, hiểu dữ liệu nào sẽ mất khi container bị xóa, biết traffic đi qua đâu và nhận ra ranh giới bảo mật giữa container với host.
 
-Phần **Bắt đầu** xây mental model đó trước khi đi vào cài đặt và cấu hình chi tiết. Sau khi hoàn thành phần này, bạn có thể giải thích một lệnh `docker run` đã tạo ra những gì, tự chạy và dọn dẹp một web container, đồng thời chọn được lộ trình phù hợp với công việc của mình.
+Phần **Bắt đầu** xây mental model đó trước khi đi vào cài đặt và cấu hình chi tiết. Sau khi hoàn thành phần này, bạn có thể giải thích một lệnh `docker run` đã tạo ra những gì, tự chạy và dọn dẹp một web container, đồng thời biết mình đã đủ nền tảng để đi tiếp hay chưa.
 
 ## Bạn sẽ học được gì?
 
@@ -14,7 +14,7 @@ Phần này dẫn bạn qua bốn kết quả chính:
 1. **Hiểu Docker giải quyết vấn đề nào:** đóng gói application cùng runtime dependencies thành image và chạy image dưới dạng container.
 2. **Phân biệt các khái niệm dễ nhầm:** container với virtual machine, image với container, registry với repository, `Dockerfile` với Compose file.
 3. **Quan sát một lifecycle hoàn chỉnh:** pull image, create và start container, publish port, đọc trạng thái, stop rồi remove resource.
-4. **Biết học tiếp ở đâu:** chọn nhánh developer, operations, platform, security hoặc CI/CD thay vì đọc mọi trang theo cùng một độ sâu.
+4. **Biết học tiếp ở đâu:** xác định mốc tiếp theo trong curriculum thay vì đọc mọi trang theo cùng một độ sâu.
 
 <Callout type="info" title="Lưu ý">
   Bạn chưa cần biết Docker trước khi đọc phần này. Kinh nghiệm dùng terminal, hiểu file và directory, port TCP cùng mô hình client-server sẽ giúp thực hành thuận lợi hơn. Trang [Kiểm tra kiến thức nền](/docs/bat-dau/kiem-tra-kien-thuc-nen/) giúp bạn xác định phần cần ôn.
@@ -31,9 +31,7 @@ Các trang được sắp theo thứ tự từ khái niệm đến thao tác:
 | 3 | [Hệ sinh thái Docker](/docs/bat-dau/he-sinh-thai-docker/) | Engine, CLI, Desktop, Build, Compose và registry liên hệ với nhau ra sao? |
 | 4 | [Thuật ngữ Docker quan trọng](/docs/bat-dau/thuat-ngu-quan-trong/) | Những từ nào cần hiểu chính xác trước khi đọc command và cấu hình? |
 | 5 | [Ứng dụng container đầu tiên](/docs/bat-dau/ung-dung-container-dau-tien/) | Một container web đi từ image đến request trong browser như thế nào? |
-| 6 | [Cách đọc Docker documentation](/docs/bat-dau/doc-documentation-hieu-qua/) | Làm sao tìm đúng manual, reference và hướng dẫn theo version? |
-| 7 | [Lộ trình theo vai trò](/docs/bat-dau/lo-trinh-theo-vai-tro/) | Chủ đề nào cần ưu tiên cho công việc cụ thể? |
-| 8 | [Kiểm tra kiến thức nền](/docs/bat-dau/kiem-tra-kien-thuc-nen/) | Bạn đã sẵn sàng thực hành và còn thiếu kiến thức nền nào? |
+| 6 | [Kiểm tra kiến thức nền](/docs/bat-dau/kiem-tra-kien-thuc-nen/) | Bạn đã sẵn sàng thực hành và còn thiếu kiến thức nền nào? |
 
 Nếu hoàn toàn mới, hãy đọc theo thứ tự trên. Nếu đã từng chạy container, bạn có thể làm bài kiểm tra trước, sau đó quay lại những phần trả lời chưa chắc chắn.
 

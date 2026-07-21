@@ -1,208 +1,169 @@
-# Fumadocs components trong Markdown/MDX
+# Fumadocs Components — Dùng trong file .md
 
-Chỉ dùng component nếu repository đã đăng ký nó trong MDX renderer. Với repository này, kiểm tra `src/components/mdx.tsx`, `src/app/docs/[[...slug]]/page.tsx` và `source.config.ts`; component và props có thể khác theo version.
+Tất cả component bên dưới đã được đăng ký global trong `src/app/[[...slug]]/page.tsx` — dùng trực tiếp trong file `.md` **không cần import**.
 
-## Mục lục
+> Nếu repo mới chưa có: xem `page.tsx` chuẩn đầy đủ trong [`setup-deploy.md`](setup-deploy.md).
 
-- [Nguyên tắc chọn component](#nguyên-tắc-chọn-component)
-- [Callout](#callout)
-- [Cards](#cards)
-- [Steps](#steps)
-- [Tabs](#tabs)
-- [Accordion](#accordion)
-- [TypeTable](#typetable)
-- [Mermaid](#mermaid)
+---
 
-## Nguyên tắc chọn component
-
-| Nhu cầu | Component |
-|---|---|
-| Highlight warning/invariant | `Callout` |
-| Điều hướng tới trang liên quan | `Cards` + `Card` |
-| Quy trình tuần tự | `Steps` + `Step` |
-| Biến thể tương đương theo platform/tool | `Tabs` + `Tab` |
-| Nội dung phụ hoặc FAQ | `Accordions` + `Accordion` |
-| Mô tả config/type | `TypeTable` |
-| Flow, sequence, state, architecture | Mermaid code block |
-
-Không dùng component để trang trông “phong phú”. Dùng khi nó giúp người đọc hiểu cấu trúc hoặc thao tác nhanh hơn.
-
-## Callout
+## Callout — Hộp highlight
 
 ```mdx
-<Callout type="warn" title="Kiểm tra context">
-  Command tiếp theo thay đổi resource trong cluster hiện tại.
-</Callout>
+<Callout>Thông tin thông thường</Callout>
+
+<Callout type="warn" title="Cảnh báo">Nội dung cảnh báo</Callout>
+
+<Callout type="error">Lỗi nghiêm trọng</Callout>
+
+<Callout type="success" title="Hoàn thành">Thao tác thành công</Callout>
 ```
 
-Type khả dụng phụ thuộc version/component registration. Repository hiện tại thường dùng `info`, `warn`, `error`, `success`; kiểm tra type signature nếu build lỗi.
+**Types:** `info` (default) | `warn` | `error` | `success`
 
-Dùng Callout cho thông tin cần được chú ý ngay. Giữ phần giải thích chính trong prose thay vì đặt nhiều paragraph dài vào Callout.
+> Thay thế cho `> [!NOTE]` / `> [!IMPORTANT]` — dùng Callout khi cần màu sắc rõ hơn.
 
-## Cards
+---
+
+## Cards — Nhóm link dạng tile
 
 ```mdx
 <Cards>
-  <Card href="/networking/service/" title="Service">
-    Hiểu cách Service chọn backend và route traffic.
+  <Card href="/basics/01-microservice-overview" title="Tổng quan">
+    Khái niệm cơ bản về Microservice
   </Card>
-  <Card href="/networking/ingress/" title="Ingress">
-    Tiếp tục với HTTP/HTTPS routing từ bên ngoài cluster.
+  <Card href="/aws/api-gateway" title="API Gateway">
+    Quản lý API trên AWS
   </Card>
 </Cards>
 ```
 
-Internal `href` phải có trailing slash. Mỗi Card cần title cụ thể và description cho biết người đọc nhận được gì sau khi mở trang.
+Dùng cho: trang index, navigation section, "xem thêm" cuối bài.
 
-## Steps
+---
+
+## Steps — Hướng dẫn từng bước
 
 ```mdx
 <Steps>
   <Step>
-    ### Tạo namespace
-
-    ```bash
-    kubectl create namespace policy-demo
-    ```
-
-    Xác minh namespace ở trạng thái `Active`.
+    ### Cài đặt dependencies
+    Chạy `npm install` trong thư mục project.
   </Step>
-
   <Step>
-    ### Áp dụng manifest
-
-    ```bash
-    kubectl apply -f network-policy.yaml
-    ```
+    ### Cấu hình
+    Chỉnh sửa file `config.ts`.
+  </Step>
+  <Step>
+    ### Khởi động
+    Chạy `npm run dev`.
   </Step>
 </Steps>
 ```
 
-Mỗi Step nên có một mục tiêu quan sát được. Nêu prerequisite trước Steps; thêm verification trong hoặc ngay sau step tương ứng.
+Dùng cho: setup guide, deployment steps, tutorial.
 
-Nếu Markdown lồng trong component gây lỗi compile ở version hiện tại, dùng numbered headings thông thường thay vì cố giữ component.
+---
 
-## Tabs
+## Tabs — Nội dung dạng tab
 
 ```mdx
-<Tabs items={['kubectl', 'Helm']}>
-  <Tab value="kubectl">
+<Tabs items={['Docker', 'Kubernetes', 'EC2']}>
+  <Tab value="Docker">
     ```bash
-    kubectl apply -f manifests/
+    docker run my-app
     ```
   </Tab>
-  <Tab value="Helm">
+  <Tab value="Kubernetes">
     ```bash
-    helm upgrade --install demo ./chart
+    kubectl apply -f deployment.yaml
     ```
+  </Tab>
+  <Tab value="EC2">
+    Chạy trực tiếp trên EC2 instance.
   </Tab>
 </Tabs>
 ```
 
-Chỉ dùng Tabs cho các nhánh tương đương. Nếu mỗi nhánh có prerequisite, behavior hoặc trade-off khác đáng kể, dùng subsection để người đọc có thể so sánh toàn bộ nội dung.
+Dùng cho: so sánh cách cài đặt, multi-platform examples, code nhiều ngôn ngữ.
 
-Giữ `items` và `value` khớp chính xác. Dùng `groupId`/`persist` chỉ sau khi xác nhận version hỗ trợ.
+**Sync tabs cùng nhóm:**
+```mdx
+<Tabs items={['npm', 'pnpm']} groupId="pkg" persist>
+  <Tab value="npm">npm install</Tab>
+  <Tab value="pnpm">pnpm add</Tab>
+</Tabs>
+```
 
-## Accordion
+---
+
+## Accordion — Thu gọn / Mở rộng
 
 ```mdx
 <Accordions type="single">
-  <Accordion title="Vì sao policy chưa có hiệu lực?">
-    Kiểm tra CNI plugin có hỗ trợ NetworkPolicy và selector có chọn đúng Pod hay không.
+  <Accordion title="Câu hỏi 1: X là gì?">
+    Trả lời chi tiết...
+  </Accordion>
+  <Accordion title="Câu hỏi 2: Khi nào dùng?">
+    Trả lời chi tiết...
   </Accordion>
 </Accordions>
 ```
 
-Không giấu prerequisite, warning hoặc bước bắt buộc trong Accordion. Dùng cho FAQ hoặc chi tiết tùy chọn mà người đọc có thể bỏ qua.
+Dùng cho: FAQ, thông tin phụ không cần đọc ngay, collapse nội dung dài.
 
-## TypeTable
+---
+
+## TypeTable — Bảng mô tả config/props
 
 ```mdx
 <TypeTable
   type={{
-    timeoutSeconds: {
-      description: 'Thời gian chờ trước khi probe thất bại',
+    timeout: {
+      description: 'Thời gian chờ tối đa (ms)',
       type: 'number',
-      default: 1,
+      default: 5000,
     },
-    failureThreshold: {
-      description: 'Số lần thất bại liên tiếp trước khi đổi trạng thái',
+    retries: {
+      description: 'Số lần retry khi thất bại',
       type: 'number',
       default: 3,
+    },
+    onError: {
+      description: 'Callback khi có lỗi',
+      type: '(error: Error) => void',
+      required: false,
     },
   }}
 />
 ```
 
-Dùng cho tập field có schema ổn định. Với behavior phức tạp, thêm prose giải thích quan hệ giữa các field; TypeTable không thay thế phần mô tả semantics.
+Dùng cho: document API config, environment variables, service options.
 
-Xác minh default và type theo version. Không copy default từ trí nhớ.
+---
 
-## Mermaid
-
-Fence `mermaid` không tự tạo diagram. Nếu pipeline không nhận diện language này, Fumadocs chỉ hiển thị raw source như một code block dù `npm run build` vẫn thành công.
-
-### Kiểm tra pipeline trước khi viết
-
-Repository hiện tại cần đủ bốn lớp:
-
-1. `source.config.ts` đăng ký `remarkMdxMermaid` trong `mdxOptions.remarkPlugins`.
-2. `src/components/mdx.tsx` đăng ký component `Mermaid`.
-3. `src/components/mermaid.tsx` nhận prop `chart` và render SVG ở client.
-4. `package.json` có runtime dependency `mermaid`.
-
-Kiểm tra source thay vì suy luận từ một fence có sẵn:
-
-```bash
-grep -n 'remarkMdxMermaid' source.config.ts
-grep -n 'Mermaid' src/components/mdx.tsx
-npm ls mermaid --depth=0
-```
-
-Nếu một lớp còn thiếu, bổ sung renderer trước hoặc dùng diagram dạng `text`. Không để raw `sequenceDiagram` xuất hiện trên trang như thể đó là output hoàn chỉnh.
-
-### Viết diagram
+## MermaidDiagram — Diagram tự động
 
 ````mdx
 ```mermaid
 sequenceDiagram
-    participant C as Client
-    participant S as Service
-    participant P as Pod
-    C->>S: Request
-    S->>P: Forward to ready endpoint
-    P-->>C: Response
+    Client->>API Gateway: Request
+    API Gateway->>Service: Route
+    Service-->>Client: Response
 ```
 ````
 
-Chọn diagram type theo câu hỏi:
+Dùng code block ` ```mermaid ` — tự render thành SVG, không cần component tag.
 
-- `flowchart`: thành phần và hướng dữ liệu.
-- `sequenceDiagram`: thứ tự tương tác theo thời gian.
-- `stateDiagram-v2`: lifecycle/state transition.
-- `graph`: quan hệ topology đơn giản.
+---
 
-Giữ label ngắn, tránh diagram quá rộng và luôn giải thích điểm cần quan sát trong prose.
+## Khi nào dùng gì
 
-### Xác minh end-to-end
-
-Chạy lint, type-check và build theo script repository, sau đó serve production output và mở đúng route trong browser:
-
-```bash
-npm run lint
-npm run types:check
-npm run build
-npm run preview
-```
-
-Kiểm tra cả light/dark theme và viewport hẹp. Diagram đạt yêu cầu khi:
-
-- browser chứa SVG, không phải raw Mermaid source;
-- không dừng vô hạn ở loading state;
-- text và đường nối đọc được ở cả hai theme;
-- diagram rộng có horizontal overflow thay vì phá layout;
-- syntax/runtime error hiện fallback có ích thay vì khung trống.
-
-Build chỉ chứng minh MDX compile. Client-side rendering, dynamic import và diagram parser có thể khác giữa development bundler và production output; nếu behavior khác nhau, kiểm tra browser console/network ở cả hai mode và không tuyên bố hoàn tất chỉ dựa trên terminal.
-
-Với Mermaid source không tin cậy, đánh giá XSS và URL/click behavior; ưu tiên `securityLevel: 'strict'` và không render input tùy ý từ người dùng.
+| Tình huống | Component |
+|-----------|-----------|
+| Cảnh báo, tip, lưu ý quan trọng | `Callout` |
+| Navigation / link tới trang liên quan | `Cards` |
+| Hướng dẫn cài đặt, setup, deploy | `Steps` |
+| So sánh nhiều cách làm / platform | `Tabs` |
+| FAQ, thông tin optional | `Accordion` |
+| Mô tả config, API options | `TypeTable` |
+| Flow diagram, sequence, architecture | Mermaid code block |
