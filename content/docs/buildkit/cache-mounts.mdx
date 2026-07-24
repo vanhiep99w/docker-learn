@@ -51,8 +51,9 @@ Semantics của `sharing`:
 - `locked`: operation khác chờ writer hiện tại; dùng cho database/cache không chịu concurrent writer như apt.
 - `private`: mỗi writer concurrent nhận cache riêng; giảm xung đột nhưng reuse/storage kém hơn.
 
-> [!IMPORTANT]
-> `sharing=locked` khóa việc dùng cache, không khóa dependency version. Reproducibility vẫn cần lockfile, version pin và package registry policy.
+<Callout type="warn" title="Quan trọng">
+  `sharing=locked` khóa việc dùng cache, không khóa dependency version. Reproducibility vẫn cần lockfile, version pin và package registry policy.
+</Callout>
 
 ## Ví dụ theo ecosystem
 

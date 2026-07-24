@@ -255,8 +255,9 @@ Builder chạy code từ Dockerfile và build context. Với shared builder:
 - patch BuildKit, runtime và host;
 - lưu audit log: caller, source revision, builder node, output digest.
 
-> [!WARNING]
-> Có quyền gửi build tới BuildKit thường tương đương quyền thực thi workload trong boundary của worker. Không expose unauthenticated remote BuildKit endpoint.
+<Callout type="warn" title="Cảnh báo">
+  Có quyền gửi build tới BuildKit thường tương đương quyền thực thi workload trong boundary của worker. Không expose unauthenticated remote BuildKit endpoint.
+</Callout>
 
 ## Chọn topology
 

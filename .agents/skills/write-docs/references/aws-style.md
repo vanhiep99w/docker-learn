@@ -6,7 +6,7 @@ Dùng cho các doc kiểu `aws-learn`: service reference, certification prep.
 
 1. **Tổng quan** — Service là gì, key features, managed/serverless hay không
 2. **Use Cases phổ biến** — Table: Use Case | Mô tả
-3. **Exam Tips** — `> [!IMPORTANT]` blocks với câu hỏi exam mẫu
+3. **Exam Tips** — Fumadocs `<Callout type="warn">` blocks với câu hỏi exam mẫu
 4. **Core Concepts** — Numbered sections (1. Data Model, 2. Capacity, 3. Replication, ...)
 5. **So sánh** — Table so sánh với alternatives (e.g., DynamoDB vs RDS vs MongoDB)
 6. **Cấu hình / AWS CLI** — Code examples ngắn gọn
@@ -16,16 +16,18 @@ Dùng cho các doc kiểu `aws-learn`: service reference, certification prep.
 
 ## Exam Tips Format
 
-```markdown
-> [!IMPORTANT]
-> **Khi exam hỏi:** "Which service has LEAST operational overhead for X?"
-> → Đáp án: [Service] vì [lý do ngắn gọn]
->
-> **Sample Question:**
-> A company needs... Which solution MOST cost-effectively...?
-> - A) Option A
-> - B) **Option B ✓** — vì ...
-> - C) Option C
+```mdx
+<Callout type="warn" title="Exam tip">
+  **Khi exam hỏi:** "Which service has LEAST operational overhead for X?"
+
+  → Đáp án: [Service] vì [lý do ngắn gọn]
+
+  **Sample Question:**
+  A company needs... Which solution MOST cost-effectively...?
+  - A) Option A
+  - B) **Option B ✓** — vì ...
+  - C) Option C
+</Callout>
 ```
 
 ## Comparison Tables

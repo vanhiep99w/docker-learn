@@ -91,8 +91,7 @@ Không dịch sai nghĩa — nếu không có từ tiếng Việt phù hợp, gi
 
 4. **Sequential repos** (kiểu microservice): dùng prefix số `01-`, `02-`, ... trong tên file để đảm bảo thứ tự kể cả khi quên update meta.json.
 
-> [!IMPORTANT]
-> Nếu file không có trong `"pages"` của `meta.json` → **doc sẽ không xuất hiện trên sidebar**, dù file tồn tại.
+> **Important:** Nếu file không có trong `"pages"` của `meta.json` → **doc sẽ không xuất hiện trên sidebar**, dù file tồn tại.
 
 ## Document Structure Chuẩn
 
@@ -159,17 +158,18 @@ sequenceDiagram
 ```
 ````
 
-**Admonitions** (GitHub-style):
-```markdown
-> [!IMPORTANT]
-> Điểm quan trọng cần nhớ
+**Highlighted information** — use Fumadocs `<Callout>` components:
+```mdx
+<Callout type="warn" title="Quan trọng">
+  Điểm quan trọng cần nhớ
+</Callout>
 
-> [!TIP]
-> Mẹo thực tế
-
-> [!NOTE]
-> Thông tin bổ sung
+<Callout type="info" title="Lưu ý">
+  Thông tin bổ sung
+</Callout>
 ```
+
+Do not use GitHub-style `> [!NOTE]`, `> [!IMPORTANT]`, or `> [!WARNING]` unless the target repository explicitly configures and verifies a transformer for that syntax. Without that transformer, the marker renders as literal blockquote text instead of a highlighted callout.
 
 ## Syntax Gotchas
 
@@ -188,7 +188,7 @@ Các component UI có thể dùng trực tiếp trong file `.md` **không cần 
 
 | Component | Dùng cho |
 |-----------|---------|
-| `<Callout>` | Cảnh báo, tip, lưu ý (thay thế `> [!NOTE]`) |
+| `<Callout>` | Cảnh báo, tip, lưu ý; use this instead of GitHub `> [!NOTE]` syntax |
 | `<Cards>` + `<Card>` | Navigation, link tới trang liên quan |
 | `<Steps>` + `<Step>` | Hướng dẫn từng bước, setup guide |
 | `<Tabs>` + `<Tab>` | So sánh multi-platform, code nhiều ngôn ngữ |

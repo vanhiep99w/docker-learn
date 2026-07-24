@@ -40,8 +40,9 @@ docker buildx build \
 
 Khả năng backend phụ thuộc driver và image store. `docker-container`, `kubernetes` hoặc `remote` thường linh hoạt hơn. `docker` driver chỉ hỗ trợ tập exporter phù hợp khi containerd image store được bật.
 
-> [!NOTE]
-> Luôn kiểm tra tài liệu theo version Docker Engine, Buildx và BuildKit đang pin trong CI; danh sách backend và option có thể thay đổi.
+<Callout type="info" title="Lưu ý">
+  Luôn kiểm tra tài liệu theo version Docker Engine, Buildx và BuildKit đang pin trong CI; danh sách backend và option có thể thay đổi.
+</Callout>
 
 ## `mode=min` và `mode=max`
 

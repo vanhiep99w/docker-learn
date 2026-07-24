@@ -32,8 +32,9 @@ Mô tả ngắn gọn service/topic là gì, giải quyết vấn đề gì.
 └─────────────────────────────┘
 ```
 
-> [!IMPORTANT]
-> Key point cần nhớ nhất (nếu là AWS doc: exam tip)
+<Callout type="warn" title="Quan trọng">
+  Key point cần nhớ nhất (nếu là AWS doc: exam tip)
+</Callout>
 
 ---
 
@@ -79,8 +80,9 @@ command --flag value
 - **Điểm 2**: Giải thích ngắn
 - **Điểm 3**: Giải thích ngắn
 
-> [!TIP]
-> Mẹo thực tế từ kinh nghiệm
+<Callout type="info" title="Mẹo">
+  Mẹo thực tế từ kinh nghiệm
+</Callout>
 
 ---
 

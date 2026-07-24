@@ -16,8 +16,9 @@ flowchart LR
     E --> H[Local artifact / OCI layout]
 ```
 
-> [!IMPORTANT]
-> BuildKit là engine thực thi; Buildx là client/CLI để chọn builder, cấu hình output, cache, multi-platform và nhiều tính năng BuildKit khác. Hai khái niệm liên quan nhưng không đồng nghĩa.
+<Callout type="warn" title="Quan trọng">
+  BuildKit là engine thực thi; Buildx là client/CLI để chọn builder, cấu hình output, cache, multi-platform và nhiều tính năng BuildKit khác. Hai khái niệm liên quan nhưng không đồng nghĩa.
+</Callout>
 
 ## BuildKit giải quyết vấn đề gì?
 
@@ -163,8 +164,9 @@ Build có thể chạy script từ package manager, Dockerfile và source reposi
 - Cô lập builder dùng chung; áp dụng quota, cache GC và access control.
 - Xem provenance/SBOM là metadata để audit, không phải chữ ký xác thực danh tính tự động.
 
-> [!WARNING]
-> Secret mount tránh lưu secret vào layer/cache/provenance theo cơ chế chuẩn, nhưng command được chạy vẫn có thể cố tình gửi secret ra network. Chỉ build code đáng tin cậy với credential nhạy cảm.
+<Callout type="warn" title="Cảnh báo">
+  Secret mount tránh lưu secret vào layer/cache/provenance theo cơ chế chuẩn, nhưng command được chạy vẫn có thể cố tình gửi secret ra network. Chỉ build code đáng tin cậy với credential nhạy cảm.
+</Callout>
 
 ## Khi nào dùng Buildx thay `docker build`?
 

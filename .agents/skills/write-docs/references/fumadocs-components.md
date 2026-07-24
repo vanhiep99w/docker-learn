@@ -20,7 +20,7 @@ Tất cả component bên dưới đã được đăng ký global trong `src/app
 
 **Types:** `info` (default) | `warn` | `error` | `success`
 
-> Thay thế cho `> [!NOTE]` / `> [!IMPORTANT]` — dùng Callout khi cần màu sắc rõ hơn.
+> Dùng `<Callout>` thay cho GitHub-style `> [!NOTE]` / `> [!IMPORTANT]`. GitHub syntax chỉ hoạt động khi repository đã cài và cấu hình remark transformer tương ứng; nếu không, marker sẽ hiển thị nguyên văn.
 
 ---
 

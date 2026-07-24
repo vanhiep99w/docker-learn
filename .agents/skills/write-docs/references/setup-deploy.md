@@ -42,7 +42,6 @@ npm install
     "next": "^15.2.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "remark-github-admonitions-to-directives": "^2.1.0",
     "unist-util-visit": "^5.1.0"
   }
 }
@@ -184,8 +183,7 @@ export default defineConfig({
 });
 ```
 
-> [!IMPORTANT]
-> Plugin **phải đặt trong `source.config.ts`**, không phải `next.config.mjs`.
+> **Important:** Plugin **phải đặt trong `source.config.ts`**, không phải `next.config.mjs`.
 
 ### 2. `src/components/mermaid.tsx`
 
@@ -287,7 +285,7 @@ Xóa `src/app/page.tsx`, xử lý redirect trong `[[...slug]]/page.tsx` (xem `pa
 |--------|-----|
 | Doc không hiện sidebar | Thêm vào `meta.json` → `"pages"` array |
 | Wrangler deploy lỗi auth | `wrangler login` |
-| `> [!IMPORTANT]` không render | Kiểm tra `remark-github-admonitions-to-directives` trong package.json |
+| Highlight không render | Dùng `<Callout>`; chỉ dùng `> [!IMPORTANT]` khi repository đã cài và cấu hình remark transformer tương ứng |
 | Mermaid không render | Plugin phải trong `source.config.ts`, không phải `next.config.mjs` |
 | Build lỗi route conflict | Xóa `src/app/page.tsx` |
 | Content bị giới hạn width | Thêm `#nd-page article { max-width: none }` vào `globals.css` |

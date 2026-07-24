@@ -49,21 +49,20 @@ Props string dùng nháy đôi, props array dùng `{}`:
 
 ---
 
-## Admonitions — không có dòng trống bên trong
+## Highlighted callouts — dùng Fumadocs component
 
-```markdown
-✅
-> [!NOTE]
-> Dòng 1
-> Dòng 2
+Dùng `<Callout>` để tạo highlight/cảnh báo trong MDX. Component này đã được đăng ký global trong các repository Fumadocs theo skill:
 
-❌
-> [!NOTE]
->
-> Dòng 1   ← dòng trống làm vỡ block
+```mdx
+<Callout type="warn" title="Cảnh báo">
+  Dòng 1
+  Dòng 2
+</Callout>
 ```
 
-Types: `NOTE` | `IMPORTANT` | `TIP` | `WARNING` | `CAUTION`
+Các type thường dùng: `info` (mặc định), `warn`, `error`, `success`.
+
+> **Cảnh báo:** Không dùng GitHub-style `> [!NOTE]`, `> [!IMPORTANT]`, hoặc `> [!WARNING]` mặc định. Nếu repository không có remark plugin chuyển đổi tương ứng, chúng sẽ render thành literal blockquote text thay vì highlight. Chỉ dùng cú pháp đó sau khi kiểm tra cả plugin trong `source.config.ts` và build output.
 
 ---
 

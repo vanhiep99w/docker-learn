@@ -83,8 +83,9 @@ docker buildx build --output type=local,dest=./out .
 
 `--load` là shorthand cho `--output=type=docker` và phù hợp image đơn platform. Multi-platform image thường được `--push` tới registry hỗ trợ OCI index/manifest list.
 
-> [!IMPORTANT]
-> Tag không phải output. `--tag app:dev` chỉ đặt tên; với custom driver, vẫn cần `--load`, `--push` hoặc `--output`.
+<Callout type="warn" title="Quan trọng">
+  Tag không phải output. `--tag app:dev` chỉ đặt tên; với custom driver, vẫn cần `--load`, `--push` hoặc `--output`.
+</Callout>
 
 ## Nhóm option quan trọng
 
