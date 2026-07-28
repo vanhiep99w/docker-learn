@@ -310,11 +310,262 @@ Cache mount `/root/.m2` giúp Maven không tải lại artifact đã có khi ste
 
 ### Vì sao dùng `ENTRYPOINT` dạng JSON?
 
-Exec form giúp JVM trở thành process chính trong container và nhận `SIGTERM` trực tiếp. Điều này quan trọng khi Kubernetes dừng Pod trong lúc rollout hoặc scale down.
+Dockerfile có hai cách biểu diễn command:
+
+```dockerfile
+# Shell form
+ENTRYPOINT java -jar application.jar
+
+# Exec form, còn gọi là JSON form
+ENTRYPOINT ["java", "-jar", "application.jar"]
+```
+
+Hai dòng nhìn gần giống nhau nhưng tạo process tree khác nhau.
+
+#### Shell form thêm một shell trung gian
+
+Với shell form, runtime thường thực thi command thông qua `/bin/sh -c`:
+
+```text
+PID 1  /bin/sh -c java -jar application.jar
+  └─ PID 7  java -jar application.jar
+```
+
+Khi Docker hoặc Kubernetes dừng container, signal được gửi tới process chính của container, tức PID 1. Mặc định, `docker stop` gửi `SIGTERM`, chờ timeout rồi mới gửi `SIGKILL`. Nếu shell PID 1 không chuyển tiếp signal đúng cho process Java, JVM có thể không nhận `SIGTERM`, Spring Boot không chạy graceful shutdown và request đang xử lý có thể bị cắt khi timeout hết.
+
+Với exec form, runtime khởi động trực tiếp executable:
+
+```text
+PID 1  java -jar application.jar
+```
+
+JVM nhận signal trực tiếp, do đó shutdown hook và cấu hình `server.shutdown=graceful` có cơ hội hoàn thành trước `terminationGracePeriodSeconds`.
+
+```mermaid
+sequenceDiagram
+    participant K as Docker/Kubelet
+    participant P as Process PID 1
+    participant J as JVM/Spring Boot
+
+    K->>P: SIGTERM
+    alt Exec form: JVM là PID 1
+        P->>P: Chạy shutdown hooks
+        P-->>K: Exit trước deadline
+    else Shell form: sh là PID 1
+        P--xJ: Có thể không forward SIGTERM
+        K->>P: SIGKILL khi hết deadline
+    end
+```
+
+<Callout type="info" title="Exec form không làm ứng dụng tự graceful">
+  JSON form chỉ bảo đảm signal đi thẳng tới process chính. Ứng dụng vẫn phải xử lý `SIGTERM`, dừng nhận request mới, hoàn tất công việc đang chạy và thoát trước deadline. Nếu JVM có thread không chịu dừng hoặc shutdown lâu hơn grace period, Kubernetes vẫn phải cưỡng chế kết thúc process.
+</Callout>
+
+#### JSON form không tự mở rộng biến môi trường
+
+Exec form truyền từng phần tử như một argument chính xác và không chạy shell expansion. Dòng sau **không** thay `$JAVA_OPTS` bằng giá trị biến môi trường:
+
+```dockerfile
+# Sai nếu kỳ vọng $JAVA_OPTS được shell mở rộng.
+ENTRYPOINT ["java", "$JAVA_OPTS", "-jar", "application.jar"]
+```
+
+Với JVM, có thể dùng biến `JAVA_TOOL_OPTIONS` mà JVM tự đọc:
+
+```dockerfile
+ENTRYPOINT ["java", "-jar", "application.jar"]
+```
+
+```bash
+docker run --rm \
+  --env JAVA_TOOL_OPTIONS='-XX:MaxRAMPercentage=75.0' \
+  orders-service:optimized
+```
+
+Nếu thật sự cần shell logic để dựng command, dùng wrapper script và kết thúc bằng `exec` để shell được thay thế bởi process ứng dụng:
+
+```sh
+#!/bin/sh
+set -eu
+
+# Thực hiện validation hoặc chuẩn bị nhẹ tại đây.
+exec java -jar /application/application.jar "$@"
+```
+
+```dockerfile
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+```
+
+Không dùng `eval` để ghép command từ biến môi trường không tin cậy. Wrapper cũng không nên thực hiện migration dài, chạy process nền rồi quên `wait`, hoặc nuốt exit code của ứng dụng.
+
+#### Kết hợp `ENTRYPOINT` và `CMD` khi cần default arguments
+
+Một pattern rõ ràng là giữ executable ổn định trong `ENTRYPOINT` và đặt argument mặc định trong `CMD`:
+
+```dockerfile
+ENTRYPOINT ["java", "-jar", "application.jar"]
+CMD ["--spring.profiles.active=default"]
+```
+
+Khi không truyền argument, container chạy:
+
+```text
+java -jar application.jar --spring.profiles.active=default
+```
+
+Argument sau image name sẽ thay `CMD` nhưng vẫn được nối sau `ENTRYPOINT`:
+
+```bash
+docker run --rm orders-service:optimized \
+  --spring.profiles.active=local
+```
+
+Kết quả:
+
+```text
+java -jar application.jar --spring.profiles.active=local
+```
+
+`docker run --entrypoint ...` có thể override cả `ENTRYPOINT`, nhưng đó nên là thao tác debug có chủ đích, không phải cách chạy production thường xuyên.
+
+#### Cách kiểm chứng signal thực sự hoạt động
+
+Không kết luận chỉ bằng cách nhìn Dockerfile. Chạy container, xem process rồi dừng có timeout:
+
+```bash
+docker run --detach \
+  --name orders-service-signal \
+  orders-service:optimized
+
+docker top orders-service-signal
+docker stop --time 30 orders-service-signal
+docker logs orders-service-signal
+docker inspect orders-service-signal \
+  --format 'exit={{.State.ExitCode}} oom={{.State.OOMKilled}} finished={{.State.FinishedAt}}'
+```
+
+Kết quả mong đợi:
+
+- process Java là command chính, không có `/bin/sh -c` đứng trước;
+- log cho thấy Spring bắt đầu graceful shutdown;
+- container thoát trước 30 giây và không bị OOM kill;
+- exit code phù hợp với behavior ứng dụng.
+
+Nếu ứng dụng chủ động sinh nhiều child process, PID 1 còn phải thu gom process con đã thoát. Khi đó có thể cần init nhỏ như tùy chọn `docker run --init` hoặc cơ chế tương đương của platform. Với Spring Boot chạy một JVM duy nhất, exec-form `ENTRYPOINT` thường là điểm bắt đầu đúng và đơn giản nhất.
 
 ### Có cần đổi sang Alpine hoặc distroless ngay không?
 
-Không. Trước tiên hãy tạo một image JRE hoạt động đúng. Chỉ đổi base sau khi đã kiểm tra:
+**Không cần đối với ứng dụng Spring Boot trong ví dụ này.** Ở thời điểm hiện tại, nên giữ:
+
+```dockerfile
+FROM eclipse-temurin:21-jre-jammy AS runtime
+```
+
+Đây là quyết định có chủ đích, không phải vì Alpine hoặc distroless “không tốt”. Image hiện tại đã đạt các cải tiến có tác động lớn nhất:
+
+- Maven, JDK, source code và cache đã bị loại bằng multi-stage build;
+- final image chỉ cần JRE và executable JAR;
+- JVM chạy bằng numeric non-root user;
+- container đã được kiểm tra với read-only root filesystem và `/tmp` riêng;
+- base Ubuntu Jammy dùng glibc, tương thích rộng với Java/native dependency;
+- image vẫn có môi trường quen thuộc để chẩn đoán giai đoạn đầu.
+
+Trong case study này, đổi base **không giải quyết một lỗi hoặc bottleneck đã đo được**. Vì vậy, nó chưa đáng để tăng thêm biến số cho quá trình tối ưu.
+
+<Callout type="info" title="Kết luận cho ví dụ Spring Boot">
+  Dùng `eclipse-temurin:21-jre-jammy` làm production baseline. Chỉ thử Alpine hoặc distroless ở một candidate riêng khi registry size, pull time, số package/CVE hoặc security policy cho thấy base hiện tại là vấn đề thực sự.
+</Callout>
+
+#### Vì sao chưa chọn Alpine?
+
+Alpine dùng musl libc thay vì glibc. Một Spring Boot application chỉ dùng Java thuần có thể chạy tốt, nhưng dependency thực tế có thể gọi native code thông qua JNI/JNA hoặc đóng gói binary riêng. Các nhóm thư viện cần đặc biệt kiểm tra gồm:
+
+- image/PDF processing, font rendering;
+- Netty native transport, DNS resolver hoặc TLS provider;
+- compression, database driver hoặc observability agent có native component;
+- headless browser, media processing và thư viện hệ thống;
+- agent APM/profiler được attach khi runtime.
+
+Nếu một dependency được build cho glibc, chuyển sang musl có thể gây lỗi lúc startup hoặc chỉ lỗi khi code path đó được gọi. Việc base Alpine có dung lượng ban đầu nhỏ hơn cũng không bảo đảm **toàn bộ Java image** giảm theo cùng tỷ lệ, vì JRE và application dependencies vẫn chiếm phần đáng kể.
+
+Alpine chỉ trở thành candidate hợp lý khi:
+
+1. registry/pull metrics cho thấy giảm thêm dung lượng có giá trị;
+2. toàn bộ dependency hỗ trợ musl hoặc đã có test cho native code path;
+3. TLS, DNS, timezone, locale và font đã được integration test;
+4. cả `linux/amd64` và `linux/arm64` đều được test nếu phát hành multi-platform;
+5. team chấp nhận thêm một compatibility matrix cần duy trì.
+
+#### Vì sao chưa chọn distroless?
+
+Distroless loại shell, package manager và nhiều utility khỏi runtime image. Điều này giúp giảm số package phải quản lý và hạn chế một số kỹ thuật tấn công sau khi attacker đã thực thi được command. Tuy nhiên, nó không tự động:
+
+- sửa CVE nằm trong JAR hoặc Maven dependency;
+- làm Spring Boot startup nhanh hơn;
+- làm ứng dụng xử lý `SIGTERM` đúng;
+- thay thế non-root user, read-only filesystem hoặc dropped capabilities;
+- bảo đảm image có đúng CA certificate, timezone và native library.
+
+Với case study hiện tại, team vẫn đang kiểm chứng runtime contract và graceful shutdown. Giữ một base JRE quen thuộc làm baseline giúp phân biệt lỗi do ứng dụng với lỗi do đổi môi trường. Chuyển sang distroless quá sớm làm mất shell và công cụ chẩn đoán ngay lúc team còn đang khám phá các path cần ghi file, certificate hoặc native dependency.
+
+Distroless phù hợp ở bước sau khi:
+
+1. image JRE baseline đã chạy ổn định trên staging/production;
+2. test bao phủ startup, HTTP, TLS, health, signal và writable paths;
+3. log, metrics, traces và heap/thread diagnostics không phụ thuộc shell trong container;
+4. platform có debug workflow riêng, ví dụ Kubernetes ephemeral debug container;
+5. scanner hoặc security policy cho thấy loại userland package mang lại lợi ích cụ thể.
+
+#### Cách thử base mới mà không phá baseline
+
+Giữ cùng application artifact và tạo runtime target riêng. Không thay đồng thời JAR packaging, JVM flags và Kubernetes probes:
+
+```dockerfile
+FROM eclipse-temurin:21-jre-jammy AS runtime-baseline
+WORKDIR /application
+COPY --from=build --chown=10001:10001 \
+    /workspace/target/*.jar application.jar
+USER 10001:10001
+ENTRYPOINT ["java", "-jar", "application.jar"]
+
+# Alpine candidate dùng đúng application.jar của baseline.
+FROM eclipse-temurin:21-jre-alpine AS runtime-candidate
+WORKDIR /application
+COPY --from=runtime-baseline --chown=10001:10001 \
+    /application/application.jar application.jar
+USER 10001:10001
+ENTRYPOINT ["java", "-jar", "application.jar"]
+```
+
+Build và test hai target bằng cùng test suite:
+
+```bash
+docker build --target runtime-baseline \
+  --tag orders-service:jre-jammy .
+
+docker build --target runtime-candidate \
+  --tag orders-service:jre-alpine .
+```
+
+Ví dụ này chỉ thay distro/libc, giữ JRE major version, JAR, user và entrypoint giống nhau. Trước khi dùng trong release thật, vẫn phải xác minh tag/digest từ registry chính thức và pin theo update policy của project. Distroless nên là candidate riêng vì path, default user và cách debug có thể khác; không gộp cả Alpine và distroless vào cùng một lần so sánh.
+
+So sánh ít nhất:
+
+| Chỉ số | JRE Jammy baseline | Alpine candidate |
+|---|---:|---:|
+| Registry compressed bytes | Đo | Đo |
+| Cold pull trên node mới | Đo | Đo |
+| Startup đến readiness | Đo | Đo |
+| Outbound HTTPS/DNS | Pass/fail | Pass/fail |
+| Native dependency paths | Pass/fail | Pass/fail |
+| Graceful shutdown | Pass/fail | Pass/fail |
+| Số package/CVE theo policy | Đo | Đo |
+| Khả năng debug incident | Ghi workflow | Ghi workflow |
+
+Chỉ chuyển production sang candidate nếu nó giữ toàn bộ runtime behavior và tạo ra lợi ích đủ lớn để bù chi phí compatibility/debug.
+
+Trước khi đổi base, luôn kiểm tra:
 
 - native library dùng glibc hay musl;
 - outbound HTTPS có CA certificate;
@@ -322,7 +573,7 @@ Không. Trước tiên hãy tạo một image JRE hoạt động đúng. Chỉ �
 - cách debug khi image không có shell;
 - target architecture như `linux/amd64` hoặc `linux/arm64`.
 
-Đổi base chỉ để giảm vài MB nhưng làm ứng dụng lỗi TLS hoặc native dependency là tối ưu sai mục tiêu.
+Đổi base chỉ để giảm vài MB nhưng làm ứng dụng lỗi TLS, DNS hoặc native dependency là tối ưu sai mục tiêu. Với Spring Boot của bài này, **kết luận hiện tại là chưa đổi**; JRE Jammy tiếp tục là baseline cho các phần local test, layered JAR và Kubernetes phía sau.
 
 ### Chọn base image theo decision table
 
@@ -872,7 +1123,11 @@ Khi cache miss, hãy tìm **step đầu tiên không được reuse**. Khi Pod l
 Các lệnh sau chỉ xóa object được tạo trong ví dụ. Kiểm tra container trước khi xóa image:
 
 ```bash
-docker container rm --force orders-service orders-service-limited 2>/dev/null || true
+docker container rm --force \
+  orders-service \
+  orders-service-limited \
+  orders-service-signal \
+  2>/dev/null || true
 docker image rm \
   orders-service:before \
   orders-service:context-check \
