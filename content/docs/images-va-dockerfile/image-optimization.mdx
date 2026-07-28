@@ -1,46 +1,92 @@
 ---
 title: "Tối ưu Docker image"
-description: "Tối ưu image theo một flow dễ áp dụng: giảm build context, tách builder khỏi runtime, tận dụng cache và kiểm chứng image Spring Boot khi triển khai trên Kubernetes."
+description: "Tối ưu Docker image theo quy trình đo lường rõ ràng: context nhỏ, cache đúng, multi-stage build, runtime tối thiểu, non-root và kiểm chứng từ máy local đến Kubernetes."
 ---
 
-Tối ưu Docker image không phải là cuộc thi tìm image có số `SIZE` nhỏ nhất. Một image tốt phải đạt đồng thời bốn mục tiêu:
+Tối ưu Docker image không phải là cuộc thi tìm image có số `SIZE` nhỏ nhất. Mục tiêu thật sự là tạo ra một artifact **chạy đúng, build nhanh, phân phối hiệu quả, an toàn và có thể tái tạo**. Nếu giảm được 100 MB nhưng ứng dụng mất CA certificate, không nhận `SIGTERM` hoặc khó rollback thì đó là regression, không phải tối ưu.
+
+Trang này dùng một ứng dụng Java Spring Boot làm case study xuyên suốt. Tuy nhiên, quy trình và mental model áp dụng tương tự cho Node.js, Python, Go, .NET hoặc bất kỳ workload nào được đóng gói thành container.
+
+Sau khi hoàn thành, bạn sẽ biết cách:
+
+- phân biệt tối ưu **build context**, **build cache**, **image layers** và **runtime**;
+- đo baseline trước khi sửa Dockerfile;
+- tách toolchain khỏi final image bằng multi-stage build;
+- chọn base image dựa trên runtime contract thay vì chỉ nhìn dung lượng;
+- kiểm tra user, filesystem, signal, health endpoint và image history;
+- hiểu image tối ưu ảnh hưởng thế nào tới pull time, startup và rollout trên Kubernetes;
+- xác định bước tiếp theo dựa trên bottleneck đã đo, thay vì áp dụng mọi kỹ thuật cùng lúc.
+
+## Mental model: có ba giai đoạn khác nhau
+
+Một thay đổi chỉ có giá trị khi nó tối ưu đúng giai đoạn đang chậm hoặc đang rủi ro:
+
+```mermaid
+flowchart LR
+    A[Source code] --> B[Build context]
+    B --> C[BuildKit builder]
+    C --> D[Image layers và config]
+    D --> E[(Registry)]
+    E --> F[Container runtime]
+    F --> G[Application process]
+```
+
+| Giai đoạn | Thành phần chính | Kỹ thuật tối ưu | Kết quả mong đợi |
+|---|---|---|---|
+| **Input/build** | Context, Dockerfile, dependency, compiler | `.dockerignore`, thứ tự `COPY`, cache mount, external cache | Build nhanh và cache invalidation đúng |
+| **Artifact/distribution** | Manifest, config, compressed layers | Multi-stage, runtime base phù hợp, layered artifact | Push/pull ít dữ liệu hơn, ít package thừa |
+| **Runtime/operation** | User, process, filesystem, health, resource | Exec-form entrypoint, non-root, read-only filesystem, probes | Khởi động và shutdown đúng, giảm quyền và blast radius |
+
+Ví dụ, `.dockerignore` có thể giảm thời gian gửi context nhưng không tự làm JAR nhỏ hơn. Multi-stage build có thể giảm final image nhưng không tự làm Maven build nhanh nếu Dockerfile phá cache. Kubernetes probe có thể bảo vệ rollout nhưng không làm registry pull nhanh hơn.
+
+<Callout type="info" title="Nguyên tắc quan trọng nhất">
+  Mỗi kỹ thuật tối ưu phải gắn với một phép đo hoặc một runtime contract. Hãy trả lời hai câu hỏi: **đang tối ưu phần nào?** và **sẽ kiểm chứng bằng cách nào?**
+</Callout>
+
+## Một image tốt cần cân bằng điều gì?
+
+Một image production tốt phải đạt đồng thời các mục tiêu sau:
 
 | Mục tiêu | Câu hỏi cần trả lời |
 |---|---|
 | **Chạy đúng** | Ứng dụng có đủ JRE, CA certificate, timezone và thư viện cần thiết không? |
 | **Build nhanh** | Sửa source có buộc Maven tải lại toàn bộ dependency không? |
 | **Phân phối nhanh** | Node Kubernetes phải pull bao nhiêu layer mới trong mỗi lần rollout? |
-| **An toàn, dễ vận hành** | Container có chạy non-root, nhận `SIGTERM`, expose health endpoint và không chứa secret không? |
+| **Tái tạo được** | Cùng source, lockfile và base digest có tạo ra artifact có thể truy vết không? |
+| **An toàn** | Final image có compiler, package thừa, secret hoặc chạy bằng `root` không? |
+| **Dễ vận hành** | Process có nhận `SIGTERM`, expose health endpoint và chạy được với filesystem hạn chế không? |
 
 <Callout type="info" title="Thứ tự ưu tiên">
-  Hãy tối ưu theo thứ tự **chạy đúng → tách build/runtime → tối ưu cache → hardening → đo trên Kubernetes**. Image nhỏ nhưng không khởi động được hoặc không shutdown đúng vẫn là một image lỗi.
+  Hãy tối ưu theo thứ tự **chạy đúng → đo baseline → tách build/runtime → tối ưu cache → hardening → đo trên môi trường triển khai**. Image nhỏ nhưng không khởi động được hoặc không shutdown đúng vẫn là một image lỗi.
 </Callout>
-
-Trang này dùng một ứng dụng Java Spring Boot để nối toàn bộ flow từ source code đến Pod:
-
-```mermaid
-flowchart LR
-    A[Source + Dockerfile] --> B[BuildKit]
-    B --> C[Container image]
-    C --> D[(Registry)]
-    D --> E[Kubernetes node]
-    E --> F[Pod]
-    F --> G[Readiness và traffic]
-```
 
 Nếu chưa quen với layer, cache hoặc multi-stage build, nên đọc [Image layers và build cache](/docs/images-va-dockerfile/layers-and-cache/) và [Multi-stage builds](/docs/images-va-dockerfile/multi-stage-builds/) trước.
 
-## Flow tối ưu trong 5 bước
+## Bảy điểm kiểm soát từ baseline đến production
 
-Dùng cùng một flow cho mọi ngôn ngữ:
+Dùng cùng bảy điểm kiểm soát cho mọi ngôn ngữ. Các phần thực hành phía dưới nhóm chúng thành năm chặng thay đổi Dockerfile và triển khai:
 
-1. **Xác định runtime contract:** ứng dụng cần runtime nào, chạy port nào, ghi file ở đâu và shutdown ra sao.
-2. **Build baseline:** tạo image đang dùng và đo trước khi sửa.
-3. **Loại bỏ phần không cần ở runtime:** compiler, source, package cache và công cụ build.
-4. **Kiểm chứng local:** HTTP, health check, user, filesystem và `SIGTERM` vẫn hoạt động.
-5. **Kiểm chứng trên Kubernetes:** image pull, startup, readiness, rollout và termination.
+1. **Xác định runtime contract:** ứng dụng cần runtime, certificate, native library, port, writable path và signal nào.
+2. **Build baseline:** build image hiện tại, lưu tag riêng và ghi lại size, duration, user, layers.
+3. **Thu hẹp input:** giảm build context và ổn định các input ít thay đổi.
+4. **Tách build khỏi runtime:** loại compiler, source, test output và package cache khỏi final image.
+5. **Hardening có kiểm chứng:** chạy non-root, dùng exec form và thử read-only root filesystem.
+6. **Đo lại trên local/CI:** so sánh cold build, warm build, rebuild sau khi sửa source và runtime behavior.
+7. **Đo trên môi trường triển khai:** quan sát registry push, node pull, startup, readiness, rollout và termination.
 
-Không nên thay base image, cách package JAR, cache và Kubernetes manifest cùng lúc. Thay đổi theo từng bước giúp biết chính xác cải tiến nào tạo ra kết quả.
+Không nên thay base image, cách package JAR, cache và Kubernetes manifest cùng lúc. Thay đổi theo từng bước giúp biết chính xác cải tiến nào tạo ra kết quả và giúp rollback dễ hơn nếu có regression.
+
+Một bảng đo đơn giản có thể dùng trong pull request:
+
+| Chỉ số | Baseline | Candidate | Cách đo |
+|---|---:|---:|---|
+| Cold build | ... | ... | Builder/cache sạch có kiểm soát |
+| Warm build, không đổi source | ... | ... | Build lại cùng input |
+| Rebuild sau khi sửa một file Java | ... | ... | Cùng builder và network |
+| Local logical size | ... | ... | `docker image inspect` |
+| Registry compressed bytes | ... | ... | Registry/CI metrics |
+| Startup đến readiness | ... | ... | Container log hoặc Pod events |
+| Graceful shutdown | pass/fail | pass/fail | `docker stop` hoặc rollout staging |
 
 ## Ví dụ Spring Boot: xác định runtime contract
 
@@ -62,6 +108,23 @@ orders-service/
 - có dependency `spring-boot-starter-actuator` để cung cấp health endpoint;
 - ghi log ra `stdout`/`stderr`, không ghi log vào image.
 
+### Runtime contract phải được viết ra trước Dockerfile
+
+Dockerfile chỉ là cách đóng gói runtime contract. Nếu contract chưa rõ, việc chọn JRE, user hoặc filesystem gần như chỉ là đoán. Với ứng dụng ví dụ, contract tối thiểu là:
+
+| Contract | Quyết định trong image/container | Cách kiểm chứng |
+|---|---|---|
+| Java 21 runtime | Final stage dùng Java 21 JRE, không cần Maven/JDK | `java -version` ở stage kiểm chứng và smoke test ứng dụng |
+| HTTP port `8080` | `EXPOSE 8080`, publish port khi chạy local | Gọi endpoint qua `curl` |
+| Không cần quyền root | `USER 10001:10001` | `docker inspect`, `id` nếu image có shell, security context khi deploy |
+| Root filesystem không cần ghi | Chỉ cấp writable `/tmp` | Chạy với `--read-only --tmpfs /tmp` |
+| Có outbound HTTPS | Runtime phải có CA certificate phù hợp | Integration test tới dependency HTTPS |
+| Nhận `SIGTERM` | Exec-form `ENTRYPOINT`, Spring graceful shutdown | `docker stop --time 30` và đọc log |
+| Health semantics riêng | Actuator liveness/readiness endpoint | Gọi từng endpoint và mô phỏng dependency chưa ready |
+| Config/secret ở runtime | Không bake production config/secret vào image | Kiểm tra history/config và inject qua runtime |
+
+Các ứng dụng có native library, font, locale, timezone database, headless browser hoặc image-processing library phải bổ sung chúng vào contract. “Ứng dụng khởi động được trên laptop” chưa chứng minh runtime image có đủ dependency cho mọi code path production.
+
 Để Spring Boot cung cấp probe riêng cho Kubernetes, thêm cấu hình:
 
 ```properties
@@ -80,6 +143,8 @@ Hai endpoint được dùng trong ví dụ:
 
 - **Liveness** trả lời “process còn hoạt động bình thường không?”. Không nên làm liveness phụ thuộc database hoặc API bên ngoài, nếu không một sự cố database có thể khiến toàn bộ Pod bị restart hàng loạt.
 - **Readiness** trả lời “Pod đã sẵn sàng nhận traffic chưa?”. Khi readiness fail, Kubernetes dừng route traffic tới Pod nhưng không nhất thiết restart container.
+
+Startup probe sẽ được thêm ở phần Kubernetes. Khi startup probe tồn tại, kubelet chưa chạy liveness và readiness cho đến khi startup probe thành công. Đây là cách cho ứng dụng khởi động chậm một khoảng thời gian riêng mà không phải làm liveness trở nên quá lỏng.
 
 ## Bước 1: build image baseline
 
@@ -105,22 +170,40 @@ Thay tên JAR trong `ENTRYPOINT` theo `artifactId` và `version` thực tế c�
 - build output trung gian;
 - user mặc định `root`.
 
-Build baseline để có số liệu so sánh:
+Build baseline để có số liệu so sánh. Lần đầu đại diện cho cold build hoặc trạng thái cache hiện tại đã được ghi nhận; lần thứ hai dùng cùng input để quan sát warm cache:
 
 ```bash
-docker build \
-  --file Dockerfile.before \
-  --tag orders-service:before \
-  --progress=plain \
-  .
+# Lần 1: cold hoặc trạng thái cache hiện tại đã được ghi nhận.
+time docker build --file Dockerfile.before \
+  --tag orders-service:before --progress=plain .
+
+# Lần 2: warm build với input giống hệt.
+time docker build --file Dockerfile.before \
+  --tag orders-service:before --progress=plain .
 
 docker image inspect orders-service:before \
   --format 'size={{.Size}} user={{json .Config.User}}'
-
-docker image history orders-service:before
+docker image history --no-trunc orders-service:before
 ```
 
+<Callout type="warn" title="Không prune cache chỉ để lấy một con số đẹp">
+  Cold build cần môi trường cache sạch hoặc builder mới, nhưng `docker builder prune` có thể xóa cache đang được project khác dùng và không có rollback. Hãy dùng builder disposable trong CI/lab, hoặc ghi rõ trạng thái cache thay vì prune máy dùng chung.
+</Callout>
+
 `docker image inspect` hiển thị logical size trong local image store. Nó hữu ích để so sánh hai image trên cùng máy, nhưng không phải chính xác số byte mà node Kubernetes tải từ registry.
+
+### Hiểu đúng các loại “kích thước image”
+
+Một image không chỉ có một con số size duy nhất:
+
+| Số đo | Nó trả lời câu hỏi gì? | Lưu ý |
+|---|---|---|
+| Local logical size | Tổng nội dung layer mà image tham chiếu trên máy local | Shared layers có thể được tính cho nhiều image khi nhìn từng image |
+| Compressed registry size | Registry hoặc node phải truyền bao nhiêu byte cho layer chưa có | Phụ thuộc compression và layer đã tồn tại trên node |
+| Unique bytes trên host | Image làm tăng bao nhiêu storage thực tế | Phụ thuộc layer dùng chung và image store |
+| Container writable layer | Process đã ghi thêm bao nhiêu dữ liệu sau khi chạy | Không phải một phần của immutable image |
+
+Vì vậy, đừng báo cáo “image giảm 40%” mà không nói dùng số đo nào. Với rollout Kubernetes, **compressed bytes của các layer node chưa có** và **thời gian từ pull đến readiness** thường gần với trải nghiệm người dùng hơn cột `SIZE` trong `docker image ls`.
 
 ## Bước 2: thu hẹp build context
 
@@ -145,11 +228,21 @@ README.md
 2. tránh file local không liên quan làm cache miss;
 3. giảm nguy cơ copy nhầm credential hoặc build output vào image.
 
+Nó **không bảo đảm final image nhỏ hơn** nếu các file bị loại vốn chưa bao giờ được `COPY`. Lợi ích trực tiếp trước tiên là thu hẹp input boundary và giảm công việc transfer/checksum. Final image chỉ nhỏ hơn khi trước đó Dockerfile thực sự copy nội dung thừa vào layer.
+
 Kiểm tra dòng `load build context` trong output:
 
 ```bash
 docker build --progress=plain --tag orders-service:context-check .
 ```
+
+Đọc số byte ở lần build đầu. Ở lần build sau, BuildKit có thể reuse context/cache nên con số thời gian không còn đại diện cho cold transfer. Nếu context vẫn rất lớn:
+
+1. xác nhận dấu `.` cuối command đang trỏ đúng project root;
+2. xác nhận `.dockerignore` nằm ở root của context;
+3. tìm artifact lớn như `target/`, `.git/`, log, test fixture hoặc heap dump;
+4. kiểm tra Dockerfile-specific ignore file nếu dùng `--file docker/prod.Dockerfile`;
+5. không chuyển secret sang một directory khác chỉ để “giảm context” — secret phải bị loại và quản lý bằng cơ chế riêng.
 
 <Callout type="warn" title="Không đưa secret vào image">
   Không truyền password, token hoặc private key bằng `COPY`, `ARG` hay `ENV`. Secret dùng lúc build phải đi qua BuildKit secret mount; secret dùng lúc chạy phải được inject bởi Kubernetes Secret hoặc secret manager.
@@ -231,6 +324,54 @@ Không. Trước tiên hãy tạo một image JRE hoạt động đúng. Chỉ �
 
 Đổi base chỉ để giảm vài MB nhưng làm ứng dụng lỗi TLS hoặc native dependency là tối ưu sai mục tiêu.
 
+### Chọn base image theo decision table
+
+Không có một base image tốt nhất cho mọi workload:
+
+| Loại base | Điểm mạnh | Trade-off cần kiểm tra | Phù hợp khi |
+|---|---|---|---|
+| Full distro + JDK | Tool đầy đủ, dễ build/debug | Lớn, nhiều package không cần ở runtime | Builder stage |
+| Distro + JRE | Cân bằng tương thích và dung lượng | Vẫn có OS packages cần patch/scan | Runtime Java phổ biến |
+| Slim/minimal distro | Ít package hơn | Có thể thiếu shell, timezone, font, native lib | Runtime contract đã rõ và có smoke test |
+| Alpine/musl | Dung lượng base nhỏ | Native library/glibc compatibility, DNS/TLS/performance phải test | Ứng dụng và dependency hỗ trợ musl rõ ràng |
+| Distroless/`scratch` | Attack surface nhỏ, không có package manager/shell | Debug trực tiếp khó; phải chuẩn bị observability và debug workflow | Artifact self-contained, contract rất rõ |
+| Custom `jlink` runtime | Chỉ đóng gói Java modules cần thiết | Tăng độ phức tạp build/update/test | Java runtime size thật sự là bottleneck đã đo |
+
+Hai câu hỏi thường bị nhầm:
+
+- **Base nào nhỏ nhất?** chỉ nói về một con số ban đầu.
+- **Base nào nhỏ nhất nhưng vẫn thỏa runtime contract và update policy?** mới là câu hỏi production.
+
+Ưu tiên image từ nguồn tin cậy, dùng version/tag rõ ràng và có quy trình rebuild định kỳ. Tag có thể thay đổi nội dung theo thời gian. Pin digest tăng reproducibility nhưng cũng có nghĩa là image không tự nhận bản vá mới; dependency bot hoặc quy trình review phải chủ động cập nhật digest.
+
+```dockerfile
+# Ví dụ minh họa cú pháp pin; thay digest bằng giá trị đã xác minh của image thật.
+FROM eclipse-temurin:21-jre-jammy@sha256:<VERIFIED_DIGEST> AS runtime
+```
+
+<Callout type="warn" title="Không copy digest ví dụ">
+  Digest phải lấy từ registry tin cậy và được policy của tổ chức xác minh. Placeholder hoặc digest lấy từ bài viết cũ không phải dependency pin hợp lệ.
+</Callout>
+
+### Xóa file ở layer sau không làm layer trước nhỏ đi
+
+Sai lầm phổ biến:
+
+```dockerfile
+RUN apt-get update && apt-get install -y curl
+RUN rm -rf /var/lib/apt/lists/*
+```
+
+Package index đã tồn tại trong filesystem layer của `RUN` đầu. Layer sau chỉ ghi thay đổi “đã xóa”, không sửa blob bất biến trước đó. Cleanup phải nằm trong cùng instruction tạo dữ liệu:
+
+```dockerfile
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+Tuy nhiên, final runtime tốt nhất thường không cần `curl` chỉ để probe. Kubernetes có thể gửi HTTP request từ kubelet; cài thêm client trong application image làm tăng package và lỗ hổng cần quản lý. Chỉ cài công cụ runtime khi ứng dụng hoặc operational contract thực sự cần nó.
+
 <Callout type="info" title="Project Maven nhiều module">
   Ví dụ trên dành cho project một module. Với multi-module project, phải copy root POM và các module POM cần cho dependency resolution trước khi chạy `dependency:go-offline`; không copy máy móc mỗi `pom.xml` rồi giả định cache vẫn đúng.
 </Callout>
@@ -311,6 +452,66 @@ docker container logs orders-service
 
 Ứng dụng phải thoát trước timeout. Nếu Docker phải gửi `SIGKILL`, cần kiểm tra entrypoint, Spring graceful shutdown và các thread không chịu dừng.
 
+### Ma trận kiểm chứng: nhỏ hơn chưa đủ
+
+Chạy ít nhất các kiểm tra sau trước khi gọi image là “optimized”:
+
+| Nhóm | Thử nghiệm | Tiêu chí pass |
+|---|---|---|
+| Process | Khởi động container không override command | JVM chạy ở PID chính và app phục vụ request |
+| Identity | Inspect configured user | Không phải root và UID/GID khớp policy |
+| Filesystem | `--read-only` + writable `/tmp` riêng | App chạy bình thường, không ghi nhầm vào image layer |
+| Network | Gọi endpoint chính và outbound HTTPS cần thiết | Không lỗi CA/DNS/native TLS |
+| Health | Gọi liveness và readiness | Status phản ánh đúng semantics, response nhanh và nhẹ |
+| Signal | `docker stop --time 30` | App nhận `SIGTERM` và thoát trước deadline |
+| Resource | Chạy với memory/CPU gần production | Không OOM hoặc startup timeout do limit phi thực tế |
+| Architecture | Chạy artifact trên target platform | Không lỗi `exec format` hoặc native library |
+
+Nếu ứng dụng cần memory limit, có thể smoke test gần production hơn:
+
+```bash
+docker run --detach \
+  --name orders-service-limited \
+  --memory 512m \
+  --cpus 1 \
+  --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+  --publish 127.0.0.1:8081:8080 \
+  orders-service:optimized
+
+curl --fail --retry 30 --retry-delay 1 \
+  --retry-connrefused --retry-all-errors \
+  http://127.0.0.1:8081/actuator/health/readiness
+
+docker stop --time 30 orders-service-limited
+docker rm orders-service-limited
+```
+
+Giá trị `512m` và `1 CPU` chỉ là ví dụ. Dùng request/limit dự kiến của workload. Một JVM khởi động tốt khi không giới hạn resource nhưng fail trong Pod vẫn là runtime contract chưa được kiểm chứng.
+
+### Cache local và cache CI là hai bài toán khác nhau
+
+Cache mount `/root/.m2` có thể hoạt động tốt trên máy developer nhưng CI runner ephemeral thường bắt đầu không có cache. Buildx hỗ trợ export/import cache qua backend phù hợp với nền tảng. Ví dụ registry cache:
+
+```bash
+docker buildx build \
+  --cache-from type=registry,ref=registry.example.com/team/orders-service:buildcache \
+  --cache-to type=registry,ref=registry.example.com/team/orders-service:buildcache,mode=max \
+  --tag registry.example.com/team/orders-service:1.0.0 \
+  --push \
+  .
+```
+
+Cache không phải artifact release và không phải nguồn duy nhất để build đúng. Pipeline phải vẫn thành công khi cache rỗng. Cache từ pull request không tin cậy cũng cần tách scope/trust boundary; không export layer từng chứa credential được `COPY` hoặc ghi ra filesystem.
+
+Đánh giá cache CI bằng ba tình huống riêng:
+
+1. build trên runner mới nhưng import được external cache;
+2. build lại cùng commit;
+3. build commit chỉ thay đổi source, không đổi `pom.xml`.
+
+Nếu cả ba đều tải dependency lại, đọc plain log và tìm operation đầu tiên cache miss thay vì tăng kích thước cache một cách mù quáng.
+
 ## Tối ưu thêm cho Spring Boot layered JAR
 
 Multi-stage build loại Maven/JDK khỏi runtime. Tuy nhiên, nếu toàn bộ executable JAR nằm trong một layer, mỗi lần application code đổi có thể tạo một blob JAR mới.
@@ -346,7 +547,40 @@ ENTRYPOINT ["java", "-jar", "application.jar"]
 
 Lợi ích chính là **reuse layer khi push/pull giữa các release**, không phải xóa dependency khỏi ứng dụng. Chỉ thêm bước này sau khi multi-stage cơ bản đã chạy đúng và registry/pull time thực sự là bottleneck.
 
+Thứ tự bốn `COPY` cũng thể hiện tần suất thay đổi:
+
+```text
+dependencies           ít đổi nhất
+spring-boot-loader      ít đổi
+snapshot-dependencies  đổi khi snapshot đổi
+application            đổi thường xuyên nhất
+```
+
+Khi chỉ code ứng dụng thay đổi, registry và node có thể reuse ba layer đầu rồi truyền layer `application`. Tổng logical content của ứng dụng không nhất thiết giảm đáng kể; lợi ích đến từ **delta giữa hai release** nhỏ hơn.
+
 `jarmode=tools` phụ thuộc phiên bản Spring Boot và cách JAR được package. Nếu command `list-layers` hoặc `extract` không hoạt động, kiểm tra Spring Boot Maven/Gradle plugin của chính project thay vì đổi Dockerfile ngẫu nhiên.
+
+Kiểm tra JAR hỗ trợ layer trước khi sửa runtime stage:
+
+```bash
+java -Djarmode=tools \
+  -jar target/orders-service-0.0.1-SNAPSHOT.jar \
+  list-layers
+```
+
+Tên JAR phải khớp output thật. Project Maven có thể sinh thêm plain/original JAR; wildcard `target/*.jar` có thể match nhiều file và làm `COPY` không còn deterministic. Release pipeline nên xác định duy nhất executable JAR qua cấu hình build hoặc argument đã kiểm soát.
+
+### Khi nào chưa nên dùng layered JAR?
+
+Không thêm layered JAR chỉ vì Dockerfile mẫu có nó. Chưa cần khi:
+
+- final JAR nhỏ và node pull không phải bottleneck;
+- release hiếm, registry/node luôn có bandwidth tốt;
+- dependency thay đổi gần như mỗi release nên layer reuse thấp;
+- team chưa có test cho jarmode/package layout;
+- độ phức tạp bổ sung làm release khó debug hơn lợi ích đo được.
+
+Ngược lại, layered JAR hữu ích khi application code đổi thường xuyên, dependency ổn định và cùng nhiều node phải pull release liên tục.
 
 ## Bước 5: image tương tác với Kubernetes như thế nào?
 
@@ -531,6 +765,57 @@ kubectl logs <OLD_POD_NAME>
 
 Không thực hiện thử nghiệm restart tùy tiện trên production. Dùng môi trường staging hoặc maintenance window phù hợp.
 
+## Kích thước, bảo mật và khả năng tái tạo là ba chỉ số khác nhau
+
+Ba mục tiêu này thường cùng được cải thiện khi loại package thừa, nhưng không thể thay thế cho nhau:
+
+| Mục tiêu | Ví dụ phép kiểm tra | Kết luận không được phép suy ra |
+|---|---|---|
+| Image nhỏ | So sánh local/registry bytes | Không chứng minh không có lỗ hổng |
+| Ít CVE hơn | Scan final image và dependency | Không chứng minh image chạy non-root hoặc không có secret |
+| Reproducible/traceable | Pin input, ghi provenance, deploy digest | Không chứng minh artifact hoạt động đúng |
+| Runtime hardened | Non-root, read-only, drop capabilities | Không chứng minh source/dependency đáng tin cậy |
+
+Một image distroless có thể rất nhỏ nhưng vẫn chứa dependency ứng dụng có CVE. Một image không có CVE đã biết vẫn có thể chứa token bị `COPY`. Một digest cố định chỉ chứng minh content không đổi; nó không chứng minh content đó an toàn.
+
+Release flow production nên có các gate độc lập:
+
+1. build từ source/lockfile đã review;
+2. chạy unit/integration/smoke test trên chính candidate artifact;
+3. scan final image và dependency theo policy của tổ chức;
+4. tạo/ghi nhận SBOM, provenance hoặc attestation nếu supply chain yêu cầu;
+5. push bằng tag release rõ ràng và ghi digest;
+6. deploy digest đã qua gate, không build lại một artifact khác sau test;
+7. giữ known-good digest để rollback.
+
+<Callout type="warn" title="`ARG` và `ENV` không phải nơi giữ secret">
+  Multi-stage build không cứu được secret đã được `COPY` hoặc ghi vào layer/cache. Dùng BuildKit secret/SSH mount cho credential lúc build. Credential runtime phải được inject bởi orchestrator hoặc secret manager và không xuất hiện trong Dockerfile, image config hay build log.
+</Callout>
+
+## Cây quyết định: nên tối ưu bước nào tiếp theo?
+
+Không phải project nào cũng cần layered JAR, distroless hoặc custom JRE. Dùng triệu chứng để chọn thay đổi nhỏ nhất:
+
+```mermaid
+flowchart TD
+    A[Đã có baseline và runtime test?] -->|Chưa| B[Đo baseline và viết runtime contract]
+    A -->|Rồi| C{Bottleneck chính là gì?}
+    C -->|Build context lớn| D[.dockerignore và thu hẹp context]
+    C -->|Dependency cài lại| E[Tách manifest, cache mount, external cache]
+    C -->|Final image lớn| F[Multi-stage và runtime base phù hợp]
+    C -->|Mỗi release pull nhiều| G[Ổn định layer và layered artifact]
+    C -->|Startup chậm| H[Profile JVM/app, resource và probe]
+    C -->|Rủi ro runtime| I[Non-root, read-only, capabilities, scan]
+    D --> J[Đo lại cùng phương pháp]
+    E --> J
+    F --> J
+    G --> J
+    H --> J
+    I --> J
+```
+
+Nếu chưa có bottleneck rõ, bắt đầu bằng ba thay đổi có value cao và độ phức tạp thấp: `.dockerignore`, multi-stage build và non-root runtime. Sau đó đo lại trước khi thêm kỹ thuật nâng cao.
+
 ## Chẩn đoán nhanh
 
 | Triệu chứng | Nguyên nhân thường gặp | Kiểm tra đầu tiên |
@@ -544,6 +829,10 @@ Không thực hiện thử nghiệm restart tùy tiện trên production. Dùng 
 | Read-only filesystem làm JVM lỗi | Thiếu writable `/tmp` hoặc app ghi nhầm path | Log và volume mount `/tmp` |
 | Rollout cắt request | App không xử lý `SIGTERM` hoặc grace period quá ngắn | Log shutdown và thời gian request dài nhất |
 | Node vẫn pull nhiều dữ liệu mỗi release | JAR/layer lớn thay đổi toàn bộ | Registry layer, image history, layered JAR |
+| Scan vẫn báo nhiều package | Runtime base còn tool/package thừa hoặc CVE nằm trong app dependency | SBOM/scan result theo package ownership |
+| Build cùng commit nhưng digest khác | Input chưa pin, timestamp/generated file hoặc provenance khác | So sánh metadata, base digest và build input |
+| Local chạy được, ARM node lỗi | Chỉ build/test `linux/amd64` hoặc có native dependency | Manifest platform và smoke test trên ARM |
+| Image nhỏ nhưng khó xử lý incident | Runtime không có shell và chưa có debug workflow | Ephemeral debug container hoặc debug target riêng |
 
 Khi cache miss, hãy tìm **step đầu tiên không được reuse**. Khi Pod lỗi, đọc **events trước, logs sau**, rồi kiểm tra manifest và image digest đang chạy.
 
@@ -556,6 +845,8 @@ Khi cache miss, hãy tìm **step đầu tiên không được reuse**. Khi Pod l
 - [ ] Build và runtime tách bằng multi-stage.
 - [ ] Final image chỉ chứa JRE và artifact cần chạy.
 - [ ] Test/package chạy trong release flow.
+- [ ] CI cache tăng tốc nhưng build vẫn đúng khi cache rỗng.
+- [ ] Base image có update/pinning policy rõ ràng.
 
 ### Runtime
 
@@ -564,6 +855,8 @@ Khi cache miss, hãy tìm **step đầu tiên không được reuse**. Khi Pod l
 - [ ] Ứng dụng chạy được với read-only root filesystem và `/tmp` riêng.
 - [ ] Outbound HTTPS, timezone và native library đã được test.
 - [ ] Secret không tồn tại trong layer, `ARG` hoặc `ENV` của image.
+- [ ] Final image và application dependency được scan theo policy.
+- [ ] Có debug workflow nếu production image không có shell.
 
 ### Kubernetes
 
@@ -573,6 +866,20 @@ Khi cache miss, hãy tìm **step đầu tiên không được reuse**. Khi Pod l
 - [ ] Resource request/limit dựa trên measurement.
 - [ ] Rollout và rollback đã được thử trên staging.
 - [ ] Registry giữ known-good digest trong thời gian rollback.
+
+### Cleanup bài thực hành local
+
+Các lệnh sau chỉ xóa object được tạo trong ví dụ. Kiểm tra container trước khi xóa image:
+
+```bash
+docker container rm --force orders-service orders-service-limited 2>/dev/null || true
+docker image rm \
+  orders-service:before \
+  orders-service:context-check \
+  orders-service:optimized
+```
+
+`docker container rm --force` dừng process ngay, không kiểm tra graceful shutdown. Chỉ dùng ở bước cleanup sau khi bài test signal đã hoàn tất. Không chạy `docker system prune` hoặc `docker builder prune` trên máy dùng chung chỉ để dọn lab nhỏ này.
 
 ## Kết luận
 
