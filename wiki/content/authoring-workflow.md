@@ -7,7 +7,7 @@ This page covers repository-specific MDX work under `content/docs/`. The publish
 1. Follow the rule-loading process in [`../quickstart.md`](../quickstart.md).
 2. Read the target section's `meta.json` and `index.mdx`.
 3. Read neighboring pages—prefer completed pages in the same or preceding section—to match terminology, assumed knowledge, and link style.
-4. Read `.agents/skills/write-docs/SKILL.md` and only the relevant files under `.agents/skills/write-docs/references/`.
+4. From this repository root, read `../.agents/skills/fumadocs-technical-writer/SKILL.md` in the parent `my-docs` collection and only its relevant references. Local skill copies have been removed; a standalone clone needs explicit access to the shared skill.
 5. Check recent history for the target section with `git log -- content/docs/<section>` when intent or removed topics are unclear.
 6. Check `git status` and preserve unrelated local edits. During this wiki initialization, `content/docs/index.mdx` already contains uncommitted work.
 

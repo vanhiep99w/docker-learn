@@ -21,7 +21,7 @@ Before modifying repository files:
 | `src/lib/` | Fumadocs source loader, route constants, repository link configuration | [`architecture/system-overview.md`](architecture/system-overview.md) |
 | `source.config.ts` | MDX collection schema, processed Markdown generation, Mermaid transform | [`content/authoring-workflow.md`](content/authoring-workflow.md) |
 | Build/config files | Next.js static export, TypeScript, ESLint, Tailwind, and Cloudflare Pages settings | [`operations/development-and-deployment.md`](operations/development-and-deployment.md) |
-| `.agents/skills/write-docs/` | Maintainer guidance and reusable authoring references | [`content/authoring-workflow.md`](content/authoring-workflow.md) |
+| `../.agents/skills/fumadocs-technical-writer/` (parent collection) | Shared authoring skill; local skill copies have been removed | [`content/authoring-workflow.md`](content/authoring-workflow.md) |
 
 Generated directories such as `.source/`, `.next/`, and `out/` are not source of truth and are ignored by Git. Regenerate them through the package scripts rather than editing them.
 

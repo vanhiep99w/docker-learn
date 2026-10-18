@@ -71,7 +71,7 @@ The build cost scales with the curriculum because each source page contributes d
 | `src/app/global.css` | Tailwind and Fumadocs CSS imports plus scrollbar behavior |
 | `wrangler.toml` | Cloudflare Pages project/output settings |
 
-Use current repository config instead of generic setup examples under `.agents/skills/write-docs/references/`; those references include older stack versions and `dist/` examples for other documentation sites.
+Use current repository config instead of assuming shared skill templates match this site. The parent collection's `../.agents/skills/fumadocs-project-init/references/` contains versioned setup examples, including `dist/` output for other documentation sites; Docker Learn exports to `out/`. Local skill copies have been removed.
 
 ## Environment-sensitive metadata
 
